@@ -9,6 +9,7 @@
  pkgs.more
  pkgs.nano
  pkgs.docker
+ pkgs.docker-compose
  ];
  
  env = {

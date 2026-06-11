@@ -1,0 +1,15 @@
+services:
+  debian-desktop:
+    image: lscr.io/linuxserver/webtop:debian-xfce
+    container_name: debian_gui
+    # privileged: true <-- 已刪除，Rootless Docker 不支援
+    security_opt:
+      - seccomp:unconfined # 放寬系統呼叫限制，對 Rootless 友善
+    ports:
+      - '6080:3000'
+    shm_size: "1gb" # 給桌面環境足夠的共享記憶體
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Taipei
