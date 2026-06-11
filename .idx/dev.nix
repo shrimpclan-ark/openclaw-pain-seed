@@ -31,24 +31,44 @@
  --statedir="$STATE_DIR" \
  --socks5-server=127.0.0.1:1055 > /tmp/tailscaled.log 2>&1 &
  
- # 延長等待時間並循環檢查 socket 是否就緒
+ # 加強版等待邏輯：檢查 socket 就緒
  echo "[PAIN-001] Waiting for tailscaled.sock..."
- for i in {1..20}; do
+ for i in {1..30}; do
  if [ -S /tmp/tailscaled.sock ]; then
- echo "[PAIN-001] Socket ready!"
+ echo "[PAIN-001] Socket ready after $i seconds!"
  break
  fi
+ echo "[PAIN-001] Still waiting... ($i/30)"
  sleep 1
  done
  
- # 使用動態生成的 AuthKey 併網
- tailscale --socket=/tmp/tailscaled.sock up \
+ # 驗證 socket 是否真的可用
+ if [ ! -S /tmp/tailscaled.sock ]; then
+ echo "[PAIN-001] ERROR: Socket not ready after 30s. Check /tmp/tailscaled.log"
+ exit 1
+ fi
+ 
+ # 額外等待 2 秒確保服務完全就緒
+ sleep 2
+ 
+ # 使用動態生成的 AuthKey 併網（加入重試機制）
+ echo "[PAIN-001] Connecting to Tailscale..."
+ for attempt in {1..3}; do
+ if tailscale --socket=/tmp/tailscaled.sock up \
  --authkey=tskey-auth-ksLnbco3KG11CNTRL-nd8Ncvhv3dVDtd4LbprBcVUogbb4ux7u \
  --hostname=pain-001-$(date +%s) \
  --accept-routes \
- --ssh
+ --ssh; then
+ echo "[PAIN-001] ✅ Tailscale connected successfully!"
+ break
+ else
+ echo "[PAIN-001] Connection attempt $attempt failed, retrying..."
+ sleep 3
+ fi
+ done
  
- echo "[PAIN-001] Tailscale connected."
+ # 顯示最終狀態
+ tailscale --socket=/tmp/tailscaled.sock status | head -5
  '';
 
  # 2. SSHD 自動拉起（物理接點）
