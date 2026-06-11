@@ -41,7 +41,7 @@ EOF
       PAIN_ID=$(date +%s | tail -c 4)
       HOSTNAME="pain-node-$PAIN_ID"
       
-      tailscale --socket=/tmp/tailscaled.sock up --authkey=tskey-auth-kFj3jbUJDMRCNTRL11-CscFvhLZvr1FWADqbdmejV4JCn3rP --hostname=$HOSTNAME --ssh --accept-routes
+      tailscale --socket=/tmp/tailscaled.sock up --authkey=tskey-auth-ksLnbco3KG11CNTRL-nLXJvcfxo3SvQiKZ3N3qDvTZHt5S6nMrM --hostname=$HOSTNAME --ssh --accept-routes
       
       echo "[SEED] Tailscale connected as $HOSTNAME" >> /tmp/seed-status.log
       tailscale --socket=/tmp/tailscaled.sock ip -4 >> /tmp/seed-status.log
