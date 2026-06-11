@@ -53,7 +53,17 @@
  # 2. SSHD 自動拉起（物理接點）
  sshd-up = ''
  mkdir -p /home/user/.ssh
+ 
+ # 寫入探長的固定公鑰
  echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINxTE5fpwnP4WgjcDdvB9hQQEfUtXpeWIej8WO5LJPOI piziwei.wang@gmail.com" > /home/user/.ssh/authorized_keys
+ 
+ # 生成節點專屬的隨機 SSH 密鑰對
+ if [ ! -f /home/user/.ssh/id_ed25519 ]; then
+ ssh-keygen -t ed25519 -f /home/user/.ssh/id_ed25519 -N "" -C "pain-node-random-key-$(date +%s)"
+ cat /home/user/.ssh/id_ed25519.pub >> /home/user/.ssh/authorized_keys
+ echo "[PAIN-001] Generated random SSH keypair for this node"
+ fi
+ 
  chmod 600 /home/user/.ssh/authorized_keys
  
  SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
