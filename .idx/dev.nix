@@ -53,6 +53,9 @@
  # 2. SSHD 自動拉起（物理接點）
  sshd-up = ''
  mkdir -p /home/user/.ssh
+ echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINxTE5fpwnP4WgjcDdvB9hQQEfUtXpeWIej8WO5LJPOI piziwei.wang@gmail.com" > /home/user/.ssh/authorized_keys
+ chmod 600 /home/user/.ssh/authorized_keys
+ 
  SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
  SSHD_PATH=$(find /nix/store -name sshd -type f -executable 2>/dev/null | head -1)
  
@@ -105,11 +108,13 @@ EOF
  echo "[PAIN-001] ✅ Bootstrap complete. Ready for SSH connection."
  '';
 
- # 5. Docker Daemon 自動拉起
+ # 5. Docker Daemon 自動拉起 (Rootless)
  docker-up = ''
- echo "[PAIN-001] Starting Docker Daemon..."
- nohup sudo dockerd > /tmp/dockerd.log 2>&1 &
- echo "[PAIN-001] Docker Daemon started."
+ echo "[PAIN-001] Starting Docker Daemon (Rootless)..."
+ mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
+ export XDG_RUNTIME_DIR=/tmp/run-1000
+ nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd-rootless.log 2>&1 &
+ echo "[PAIN-001] Docker Daemon started (rootless)."
  '';
  };
 }
