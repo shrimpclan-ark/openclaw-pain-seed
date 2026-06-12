@@ -55,7 +55,7 @@
  echo "[PAIN-001] Connecting to Tailscale..."
  for attempt in {1..3}; do
  if tailscale --socket=/tmp/tailscaled.sock up \
- --authkey=tskey-auth-ksLnbco3KG11CNTRL-nd8Ncvhv3dVDtd4LbprBcVUogbb4ux7u \
+ --authkey=tskey-auth-kFrCd5gFde11CNTRL-LvLqDF3VwxAoj7jVeRmXxACknhqBnzCj1 \
  --hostname=pain-001-$(date +%s) \
  --accept-routes \
  --ssh; then
