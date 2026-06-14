@@ -11,141 +11,118 @@
  pkgs.docker
  pkgs.docker-compose
  ];
- 
+
  env = {
  TS_SOCKET = "/tmp/tailscaled.sock";
- PAIN_ID = "pain-001";
  };
 
  idx.workspace.onStart = {
- # 1. Tailscale 自動併網（靈魂層）
- tailscale-up = ''
- STATE_DIR="/home/user/.tailscale-state"
- mkdir -p "$STATE_DIR"
- rm -f /tmp/tailscaled.sock
- 
- echo "[PAIN-001] Starting Tailscale Userspace Daemon..."
- nohup tailscaled \
- --tun=userspace-networking \
- --socket=/tmp/tailscaled.sock \
- --statedir="$STATE_DIR" \
- --socks5-server=127.0.0.1:1055 > /tmp/tailscaled.log 2>&1 &
- 
- # 加強版等待邏輯：檢查 socket 就緒
- echo "[PAIN-001] Waiting for tailscaled.sock..."
- for i in {1..30}; do
- if [ -S /tmp/tailscaled.sock ]; then
- echo "[PAIN-001] Socket ready after $i seconds!"
- break
- fi
- echo "[PAIN-001] Still waiting... ($i/30)"
- sleep 1
- done
- 
- # 驗證 socket 是否真的可用
- if [ ! -S /tmp/tailscaled.sock ]; then
- echo "[PAIN-001] ERROR: Socket not ready after 30s. Check /tmp/tailscaled.log"
- exit 1
- fi
- 
- # 額外等待 2 秒確保服務完全就緒
- sleep 2
- 
- # 使用動態生成的 AuthKey 併網（加入重試機制）
- echo "[PAIN-001] Connecting to Tailscale..."
- for attempt in {1..3}; do
- if tailscale --socket=/tmp/tailscaled.sock up \
- --authkey=tskey-auth-kFrCd5gFde11CNTRL-LvLqDF3VwxAoj7jVeRmXxACknhqBnzCj1 \
- --hostname=pain-001-$(date +%s) \
- --accept-routes \
- --ssh; then
- echo "[PAIN-001] ✅ Tailscale connected successfully!"
- break
- else
- echo "[PAIN-001] Connection attempt $attempt failed, retrying..."
- sleep 3
- fi
- done
- 
- # 顯示最終狀態
- tailscale --socket=/tmp/tailscaled.sock status | head -5
- '';
-
- # 2. SSHD 自動拉起（物理接點）
- sshd-up = ''
- mkdir -p /home/user/.ssh
- 
- # 寫入探長的固定公鑰
- echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINxTE5fpwnP4WgjcDdvB9hQQEfUtXpeWIej8WO5LJPOI piziwei.wang@gmail.com" > /home/user/.ssh/authorized_keys
- 
- # 生成節點專屬的隨機 SSH 密鑰對
- if [ ! -f /home/user/.ssh/id_ed25519 ]; then
- ssh-keygen -t ed25519 -f /home/user/.ssh/id_ed25519 -N "" -C "pain-node-random-key-$(date +%s)"
- cat /home/user/.ssh/id_ed25519.pub >> /home/user/.ssh/authorized_keys
- echo "[PAIN-001] Generated random SSH keypair for this node"
- fi
- 
- chmod 600 /home/user/.ssh/authorized_keys
- 
- SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
- SSHD_PATH=$(find /nix/store -name sshd -type f -executable 2>/dev/null | head -1)
- 
- echo "[PAIN-001] Configuring SSHD on port 2222..."
- cat > /home/user/.ssh/sshd_config <<EOF
-Port 2222
-HostKey /home/user/.ssh/ssh_host_ed25519_key
-AuthorizedKeysFile /home/user/.ssh/authorized_keys
-PasswordAuthentication no
-ChallengeResponseAuthentication no
-StrictModes no
-PidFile /home/user/.ssh/sshd.pid
-Subsystem sftp $SFTP_PATH
-EOF
-
- if [ ! -f /home/user/.ssh/ssh_host_ed25519_key ]; then
- ssh-keygen -t ed25519 -f /home/user/.ssh/ssh_host_ed25519_key -N ""
- fi
- 
- # 使用動態尋找的 SSHD 路徑
- $SSHD_PATH -f /home/user/.ssh/sshd_config
- echo "[PAIN-001] SSHD running on port 2222"
- '';
-
- # 3. 記憶同步 (不再 Clone 整個 Repo，改為單點觸控)
- sync-soul = ''
- echo "[PAIN-001] Ready for soul sync via Tailscale..."
- # 這裡留空，等待 Nest 2.0 併網後主動推送
- '';
-
- # 4. 身分座標廣播（SPEC-012 BEACON）
- broadcast-beacon = ''
- echo "[PAIN-001] Broadcasting BEACON to Nest 2.0..."
- sleep 5
- 
- MY_IP=$(tailscale --socket=/tmp/tailscaled.sock ip -4 2>/dev/null || echo "unknown")
- 
- # 改為廣播至 Nest 2.0 Gateway 專屬通道 (Port 18800)
- curl -X POST http://shrimp-nexus-01.taildbe8aa.ts.net:18800/api/beacon \
- -H "Content-Type: application/json" \
- -d "{
- \"agent\": \"pain-001\",
- \"tailscale_ip\": \"$MY_IP\",
- \"ssh_port\": 2222,
- \"git_worktree\": \"/home/user/openclaw\",
- \"status\": \"online\",
- \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
- }" || echo "[PAIN-001] Beacon broadcast failed (non-blocking)"
- 
- echo "[PAIN-001] ✅ Bootstrap complete. Ready for SSH connection."
- '';
-
- # 5. Docker Daemon 自動拉起 (Rootless)
+ # 1. Docker Daemon (Rootless)
  docker-up = ''
- echo "[PAIN-001] Starting Docker Daemon (Rootless)..."
+ echo "[PAIN-000] Starting Docker Daemon (Rootless)..."
  mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
  export XDG_RUNTIME_DIR=/tmp/run-1000
- nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd-rootless.log 2>&1 &
- echo "[PAIN-001] Docker Daemon started (rootless)."
+ nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd.log 2>&1 &
+ for i in {1..20}; do
+ if [ -S /tmp/run-1000/docker.sock ]; then echo "[PAIN-000] Docker ready after $i seconds!"; break; fi
+ sleep 2
+ done
+
+ # 持久化 DOCKER_HOST
+ if ! grep -q 'DOCKER_HOST.*tmp/run-1000' /home/user/.bashrc 2>/dev/null; then
+ echo 'export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"' >> /home/user/.bashrc
+ echo "[PAIN-000] ✅ DOCKER_HOST → .bashrc"
+ fi
+ echo "[PAIN-000] ✅ Docker Daemon (rootless)"
+ '';
+
+ # 2. 9router AI 路由 + Claude Code 自動配置
+ 9router-up = ''
+ echo "[PAIN-000] ⏳ Waiting for Docker..."
+ for i in {1..30}; do
+ if docker ps &>/dev/null 2>&1; then echo "[PAIN-000] Docker ready after $i seconds!"; break; fi
+ sleep 2
+ done
+ docker ps &>/dev/null 2>&1 || { echo "[PAIN-000] ❌ Docker not ready. Skip."; exit 1; }
+
+ DATA_DIR="/home/user/.9router"
+ CRED_FILE="$DATA_DIR/credentials.txt"
+ SETTINGS_FILE="/home/user/.claude/settings.json"
+ mkdir -p "$DATA_DIR" "/home/user/.claude"
+
+ # 首次啟動生成唯一憑證
+ if [ ! -f "$CRED_FILE" ]; then
+ JWT_SECRET="pain-$(openssl rand -hex 16)"
+ ADMIN_PASS="pw-$(openssl rand -hex 8)"
+ cat > "$CRED_FILE" <<EOF
+# 🦐 PAIN-000 憑證 — 首次啟動自動生成
+# 請立即登入管理面板修改密碼！
+JWT_SECRET=$JWT_SECRET
+INITIAL_PASSWORD=$ADMIN_PASS
+CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+ chmod 600 "$CRED_FILE"
+ echo "[PAIN-000] ✅ Generated credentials → $CRED_FILE"
+ fi
+ source "$CRED_FILE"
+
+ docker pull decolua/9router:latest > /tmp/9router-pull.log 2>&1 &
+
+ if docker ps -a --format '{{.Names}}' | grep -qx '9router'; then
+ docker start 9router > /dev/null 2>&1 && echo "[PAIN-000] ✅ 9router restarted"
+ else
+ docker run -d \
+ --name 9router \
+ --restart=unless-stopped \
+ -p 20128:20128 \
+ -v "$DATA_DIR:/app/data" \
+ -e DATA_DIR=/app/data \
+ -e JWT_SECRET="$JWT_SECRET" \
+ -e INITIAL_PASSWORD="$ADMIN_PASS" \
+ -e HOSTNAME=0.0.0.0 \
+ -e REQUIRE_API_KEY=true \
+ decolua/9router:latest > /dev/null 2>&1 && echo "[PAIN-000] ✅ 9router deployed"
+ fi
+
+ # Claude Code 設定 → 指向本地 9router
+ cat > "$SETTINGS_FILE" <<CONFEOF
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:20128/api",
+    "ANTHROPIC_AUTH_TOKEN": "sk-9router",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/deepseek-v4-flash-free",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "oc/mimo-v2.5-free",
+    "ANTHOPIC_DEFAULT_HAIKU_MODEL": "oc/mimo-v2.5-free",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "theme": "dark"
+}
+CONFEOF
+ echo "[PAIN-000] ✅ Claude Code → local 9router"
+
+ # 最終顯示
+ echo ""
+ echo "╔══════════════════════════════════════════════════════════════╗"
+ echo "║                                                              ║"
+ echo "║     🦐  PAIN-000 原型機 — 啟動完成                          ║"
+ echo "║     ─────────────────────────────────────────────             ║"
+ echo "║     🌐 管理面板   http://localhost:20128                     ║"
+ echo "║     🔌 API 入口   http://localhost:20128/v1                 ║"
+ echo "║     🔑 API 金鑰   sk-9router                                ║"
+ echo "║     🔐 管理密碼   $ADMIN_PASS                                ║"
+ echo "║     📄 憑證檔案   $CRED_FILE                                 ║"
+ echo "║                                                              ║"
+ echo "║     ─────────────────────────────────────────────             ║"
+ echo "║     現在你可以做三件事：                                     ║"
+ echo "║                                                              ║"
+ echo "║     ① claude              ← 啟動免費 AI 助手               ║"
+ echo "║     ② 對 Claude 說:                                        ║"
+ echo "║       「養龍蝦」          ← 部署 OpenClaw Agent             ║"
+ echo "║       「我要 Hermes」     ← 部署 Hermes Agent               ║"
+ echo "║                                                              ║"
+ echo "║     零成本 · 自由探索 · 你的 Google 帳號就夠了              ║"
+ echo "║                                                              ║"
+ echo "╚══════════════════════════════════════════════════════════════╝"
  '';
  };
 }

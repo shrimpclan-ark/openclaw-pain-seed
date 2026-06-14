@@ -1,19 +1,9 @@
-# OpenClaw PAIN Seed
+# 🦐 PAIN-000 原型機
 
-🦐 Shrimp Clan Matrix 100 - Auto-deploy node template for Firebase Studio (IDX)
-
-This repository serves as a template for rapidly deploying 100 Firebase Studio workspaces before the 2026-06-22 deadline.
+零成本 AI 代理工場 — Firebase Studio (IDX) 匯入即用。
 
 ## Quick Start
 
-Import this repo into Firebase Studio - it will automatically:
-- Start SSH server on port 2222
-- Connect to Tailscale network
-- Launch rootless Docker daemon
-- Mark itself with unique identity
-
-See [README.md](README.md) for full documentation.
-
-## Project
-
-Part of the "One Dollar Project - From Zero to Hero" by Shrimp Clan AI Team.
+1. [idx.google.com](https://idx.google.com) → New Workspace → Import from GitHub
+2. 貼上此 Repo URL → 等 2 分鐘
+3. 輸入 `claude` → 然後說「我要養龍蝦」

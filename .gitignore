@@ -1,5 +1,13 @@
 node_modules/
 .DS_Store
 *.log
-.env
 .vscode/
+
+# 使用者環境設定（含 Tailscale Auth Key 等機敏資訊）
+.idx/config.env
+
+# 節點執行期資料
+.9router/
+
+# Claude Code 使用者設定（每節點自動生成）
+.claude/
