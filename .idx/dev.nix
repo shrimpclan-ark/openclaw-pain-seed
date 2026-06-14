@@ -1,7 +1,7 @@
 { pkgs, ... }: {
  channel = "stable-23.11";
  packages = [
- pkgs.nodejs_20
+ pkgs.nodejs_22
  pkgs.tailscale
  pkgs.openssh
  pkgs.git
@@ -144,8 +144,12 @@ EOF
  echo "[PAIN-001] Starting Docker Daemon (Rootless)..."
  mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
  export XDG_RUNTIME_DIR=/tmp/run-1000
+ # 增加等待目錄就緒
+ sleep 2
  nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd-rootless.log 2>&1 &
  echo "[PAIN-001] Docker Daemon started (rootless)."
  '';
  };
+
+ services.docker.enable = true;
 }

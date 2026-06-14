@@ -75,3 +75,13 @@ docker info
 **Status**: ✅ Ready for deployment  
 **Version**: 1.0  
 **Last Updated**: 2026-06-11
+
+---
+
+## 🍤 始祖進化日誌 (PAIN-000 Evolution)
+
+### v4.1 (2026-06-14)
+* **[物理修補]**：修正了 IDX 隔離環境下 SSH 連入時 `DOCKER_HOST` 遺失的尷尬。
+* **[套利升級]**：內建 Claude Code 算力套利邏輯，預設對接本地 9router。
+* **[身分對齊]**：實裝「進程環境偷渡」腳本，恢復蝦家班威嚴提示字元。
+* **[算力底座]**：全面升級至 Node.js v22。
