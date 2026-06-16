@@ -75,8 +75,11 @@
  sshd-up = ''
  mkdir -p /home/user/.ssh
  
- # 寫入探長的固定公鑰
- echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINxTE5fpwnP4WgjcDdvB9hQQEfUtXpeWIej8WO5LJPOI piziwei.wang@gmail.com" > /home/user/.ssh/authorized_keys
+ # 放入 Nest 2.0 (shrimp-nexus-01) 的公鑰以授權自動化運維
+ echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZnO1SS7J7uIUJwo6VeNVWnmmOcgmH/Bd3jUwANPzss shrimpclan_ai@shrimp-nexus-01" > /home/user/.ssh/authorized_keys
+ 
+ # 當需要 hp-matrix 調查時，可手動將探長公鑰加入 (piziwei.wang@gmail.com)
+ # echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINxTE5fpwnP4WgjcDdvB9hQQEfUtXpeWIej8WO5LJPOI piziwei.wang@gmail.com" >> /home/user/.ssh/authorized_keys
  
  # 生成節點專屬的隨機 SSH 密鑰對
  if [ ! -f /home/user/.ssh/id_ed25519 ]; then
