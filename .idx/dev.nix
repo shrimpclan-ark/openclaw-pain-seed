@@ -122,8 +122,12 @@ EOF
 
  # 4. 身分座標廣播（SPEC-012 BEACON）
  broadcast-beacon = ''
- echo "[PAIN-001] Broadcasting BEACON to Nest 2.0..."
- sleep 5
+ echo "[PAIN-001] Broadcasting BEACON to Nest 2.0 with Jitter..."
+ 
+ # 加入隨機延遲 (Jitter)，避免 150 個節點同時衝擊 Nest 2.0
+ JITTER=$((RANDOM % 60))
+ echo "[PAIN-001] Sleeping for $JITTER seconds before beacon..."
+ sleep $JITTER
  
  MY_IP=$(tailscale --socket=/tmp/tailscaled.sock ip -4 2>/dev/null || echo "unknown")
  
