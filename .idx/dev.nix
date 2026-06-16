@@ -148,13 +148,31 @@ EOF
 
  # 5. Docker Daemon 自動拉起 (Rootless)
  docker-up = ''
- echo "[PAIN-001] Starting Docker Daemon (Rootless)..."
+ echo "[PAIN-001] Starting Docker Daemon (Rootless)...";
  mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
  export XDG_RUNTIME_DIR=/tmp/run-1000
  # 增加等待目錄就緒
  sleep 2
  nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd-rootless.log 2>&1 &
  echo "[PAIN-001] Docker Daemon started (rootless)."
+ '';
+
+ # 6. 注入靈魂 (Soul Injection & Bash Path Fix)
+ soul-injection = ''
+ echo "[PAIN-001] Injecting Soul & Fixing Bash Environment..."
+ if [ -f /home/user/openclaw/.idx/shrimp_patch.sh ]; then
+   chmod +x /home/user/openclaw/.idx/shrimp_patch.sh
+   # 將修補腳本加入 .bashrc，確保 SSH 登入後也能自動修正環境
+   if ! grep -q "shrimp_patch.sh" /home/user/.bashrc; then
+     echo 'source /home/user/openclaw/.idx/shrimp_patch.sh' >> /home/user/.bashrc
+     echo "[PAIN-001] shrimp_patch.sh added to .bashrc"
+   fi
+   # 立即執行一次以初始化當前 session
+   source /home/user/openclaw/.idx/shrimp_patch.sh
+   echo "[PAIN-001] Soul injected successfully."
+ else
+   echo "[PAIN-001] ⚠️ shrimp_patch.sh not found, skipping soul injection."
+ fi
  '';
  };
 
