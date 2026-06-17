@@ -12,98 +12,18 @@
 
  env = {
  TS_SOCKET = "/tmp/tailscaled.sock";
- # ==========================================
- # Matrix Gateway 設定 (Cloud Run 派鑰機)
- # ==========================================
- MATRIX_GATEWAY_URL = "https://matrix-gateway-753796904076.us-central1.run.app/api/get-key";
- MATRIX_PASS = "shrimpclan-matrix-2026";
- # ==========================================
  };
 
  idx.workspace.onStart = {
- # 1. 併網 + 開門 + Docker + 9router 一鍵非同步拉起 (The Necromancer Core)
- # 全部封裝在背景執行，避免 Nix 主線程阻塞被 SIGKILL
+ # Interactive Edition: 完整全自動引導 + Claude Code CLI
  matrix-bootstrap = ''
- echo "[MATRIX] Launching Non-Blocking Bootstrap in background..."
+ echo "[INTERACTIVE] Launching Bootstrap in background..."
 
  cat > /tmp/bootstrap.sh << 'BSEOF'
  #!/usr/bin/env bash
  set -x
 
- # --- STEP A: Tailscale 併網 ---
- STATE_DIR="/home/user/.tailscale-state"
- mkdir -p "$STATE_DIR"
- rm -f /tmp/tailscaled.sock
-
- echo "[MATRIX-BG] Starting tailscaled..."
- nohup tailscaled \
-   --tun=userspace-networking \
-   --socket=/tmp/tailscaled.sock \
-   --statedir="$STATE_DIR" \
-   --socks5-server=127.0.0.1:1055 > /tmp/tailscaled.log 2>&1 &
-
- # 非同步等待 socket
- for i in {1..30}; do
-   [ -S /tmp/tailscaled.sock ] && break
-   sleep 1
- done
-
- if [ -S /tmp/tailscaled.sock ]; then
-   WS_SLUG=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
-   HOSTNAME="pain-$WS_SLUG"
-
-   echo "[MATRIX-BG] Requesting fresh Auth Key from Gateway..."
-   RESPONSE=$(curl -s -X POST "https://matrix-gateway-753796904076.us-central1.run.app/api/get-key" \
-     -H "X-Matrix-Pass: shrimpclan-matrix-2026" \
-     -H "Content-Type: application/json" \
-     -d "{\"agent\":\"$HOSTNAME\"}")
-
-   AUTH_KEY=$(echo "$RESPONSE" | jq -r .key)
-
-   if [ -n "$AUTH_KEY" ] && [ "$AUTH_KEY" != "null" ]; then
-     echo "[MATRIX-BG] Key received! Connecting to Tailnet..."
-     tailscale --socket=/tmp/tailscaled.sock up \
-       --authkey="$AUTH_KEY" \
-       --hostname="$HOSTNAME" \
-       --accept-routes \
-       --ssh
-
-     MY_IP=$(tailscale --socket=/tmp/tailscaled.sock ip -4 2>/dev/null || echo "unknown")
-     WAKEUP_URL="https://studio.firebase.google.com/$WS_SLUG"
-     VM_HOST="$WEB_HOST"
-
-     # 回報座標 (Beacon to hp-matrix)
-     curl -s -X POST http://shrimp-nexus-01:18800/api/beacon \
-       -H "Content-Type: application/json" \
-       -d "{\"agent\":\"pain-$WS_SLUG\",\"tailscale_ip\":\"$MY_IP\",\"wakeup_url\":\"$WAKEUP_URL\",\"vm_host\":\"$VM_HOST\",\"status\":\"matrix_born\"}" > /tmp/beacon.log 2>&1 || true
-   else
-     echo "[MATRIX-BG] ❌ Failed to get Auth Key: $RESPONSE"
-   fi
- fi
-
- # --- STEP B: SSHD 開門 ---
- mkdir -p /home/user/.ssh
- echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINxTE5fpwnP4WgjcDdvB9hQQEfUtXpeWIej8WO5LJPOI piziwei.wang@gmail.com" > /home/user/.ssh/authorized_keys
- chmod 600 /home/user/.ssh/authorized_keys
-
- SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
- SSHD_PATH=$(find /nix/store -name sshd -type f -executable 2>/dev/null | head -1)
-
- cat > /home/user/.ssh/sshd_config <<SSHEOF
-Port 2222
-HostKey /home/user/.ssh/ssh_host_ed25519_key
-AuthorizedKeysFile /home/user/.ssh/authorized_keys
-PasswordAuthentication no
-ChallengeResponseAuthentication no
-StrictModes no
-PidFile /home/user/.ssh/sshd.pid
-Subsystem sftp $SFTP_PATH
-SSHEOF
-
- [ -f /home/user/.ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -f /home/user/.ssh/ssh_host_ed25519_key -N ""
- $SSHD_PATH -f /home/user/.ssh/sshd_config
-
- # --- STEP C: Docker Daemon (Rootless) ---
+ # --- Docker Daemon (Rootless) ---
  mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
  export XDG_RUNTIME_DIR=/tmp/run-1000
  nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd.log 2>&1 &
@@ -114,11 +34,12 @@ SSHEOF
  done
 
  if [ -S /tmp/run-1000/docker.sock ]; then
+   export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"
    if ! grep -q 'DOCKER_HOST.*tmp/run-1000' /home/user/.bashrc 2>/dev/null; then
      echo 'export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"' >> /home/user/.bashrc
    fi
 
-   # --- STEP D: 9router 啟動 ---
+   # --- 9router ---
    DATA_DIR="/home/user/.9router"
    CRED_FILE="$DATA_DIR/credentials.txt"
    SETTINGS_FILE="/home/user/.claude/settings.json"
@@ -127,10 +48,10 @@ SSHEOF
    _rand_hex() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
 
    if [ ! -f "$CRED_FILE" ]; then
-     JWT_SECRET="pain-9r-$(_rand_hex 16)"
+     JWT_SECRET="lobster-9r-$(_rand_hex 16)"
      ADMIN_PASS="pw-$(_rand_hex 8)"
      cat > "$CRED_FILE" <<EOFC
-# PAIN-000 credentials - auto generated on first boot
+# Interactive credentials
 JWT_SECRET=$JWT_SECRET
 INITIAL_PASSWORD=$ADMIN_PASS
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -157,7 +78,6 @@ EOFC
        decolua/9router:latest > /dev/null 2>&1
    fi
 
-   # 寫入 Claude Code 設定
    cat > "$SETTINGS_FILE" <<CONFEOF
 {
   "env": {
@@ -172,12 +92,21 @@ EOFC
 }
 CONFEOF
  fi
+
+ # --- Claude Code CLI ---
+ echo "[INTERACTIVE-BG] Installing Claude Code CLI..."
+ if ! command -v claude &>/dev/null; then
+   npm install -g @anthropic-ai/claude-code > /tmp/claude-install.log 2>&1 && \
+   echo "[INTERACTIVE-BG] ✅ Claude Code installed" || \
+   echo "[INTERACTIVE-BG] ❌ Claude Code install failed (non-blocking)"
+ else
+   echo "[INTERACTIVE-BG] ✅ Claude Code already present"
+ fi
 BSEOF
 
  chmod +x /tmp/bootstrap.sh
- # 關鍵：Nohup 背景執行，Nix 主線程當場 0 秒結束
  nohup /tmp/bootstrap.sh > /tmp/bootstrap.log 2>&1 &
- echo "[MATRIX] Bootstrap fired successfully."
+ echo "[INTERACTIVE] Bootstrap fired. Wait 60s then type: claude"
  '';
  };
 }
