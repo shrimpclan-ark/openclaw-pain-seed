@@ -1,0 +1,18 @@
+{
+  "name": "🦐 PAIN-000 AI 龍蝦代理工場",
+  "description": "選擇您的部隊組合，一鍵拉起開發工作區！",
+  "params": [
+    {
+      "id": "army_type",
+      "title": "選擇部隊組合 (Deployment Mode)",
+      "type": "enum",
+      "default": "sapper",
+      "enum": ["fresh", "sapper", "lobster"],
+      "enumLabels": [
+        "清爽大軍 (Docker + 9router)",
+        "工兵大隊 (Docker + 9router + Claude Code CLI)",
+        "龍蝦小兵 (Docker + 9router + OpenClaw)"
+      ]
+    }
+  ]
+}

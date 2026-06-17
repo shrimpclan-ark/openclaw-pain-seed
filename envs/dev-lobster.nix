@@ -2,6 +2,8 @@
   channel = "unstable";
   packages = [
     pkgs.nodejs_22
+    pkgs.python3
+    pkgs.python3Packages.pip
     pkgs.tailscale
     pkgs.openssh
     pkgs.git
@@ -16,9 +18,9 @@
   };
 
   idx.workspace.onStart = {
-    # Sapper Edition: Automatic 9router deployment + Global Claude Code CLI installation
+    # Lobster Edition: Setup everything in Sapper, plus pre-install and configure ClawTeam-OpenClaw Agent
     matrix-bootstrap = ''
-      echo "[SAPPER] Launching Bootstrap in background..."
+      echo "[LOBSTER] Launching Bootstrap in background..."
 
       cat > /tmp/bootstrap.sh << 'BSEOF'
 #!/usr/bin/env bash
@@ -28,7 +30,7 @@ set -x
 mkdir -p /home/user/.ssh
 if [ ! -s /home/user/.ssh/authorized_keys ]; then
   if [ ! -f /home/user/.ssh/id_ed25519 ]; then
-    ssh-keygen -t ed25519 -f /home/user/.ssh/id_ed25519 -N "" -C "pain-sapper-$(date +%s)"
+    ssh-keygen -t ed25519 -f /home/user/.ssh/id_ed25519 -N "" -C "pain-lobster-$(date +%s)"
   fi
   cat /home/user/.ssh/id_ed25519.pub > /home/user/.ssh/authorized_keys
 fi
@@ -73,7 +75,7 @@ if [ -S /tmp/run-1000/docker.sock ]; then
   _rand_hex() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
 
   if [ ! -f "$CRED_FILE" ]; then
-    JWT_SECRET="sapper-9r-$(_rand_hex 16)"
+    JWT_SECRET="lobster-9r-$(_rand_hex 16)"
     ADMIN_PASS="pw-$(_rand_hex 8)"
     cat > "$CRED_FILE" <<EOFC
 JWT_SECRET=$JWT_SECRET
@@ -120,6 +122,22 @@ fi
 # 4. Global Claude Code install
 if ! command -v claude &>/dev/null; then
   npm install -g @anthropic-ai/claude-code > /tmp/claude-install.log 2>&1
+fi
+
+# 5. Clone and install ClawTeam-OpenClaw
+if [ ! -d "/home/user/ClawTeam-OpenClaw" ]; then
+  echo "[LOBSTER] Cloning ClawTeam-OpenClaw..."
+  git clone https://github.com/cmwang2021/ClawTeam-OpenClaw.git /home/user/ClawTeam-OpenClaw
+fi
+
+if [ -d "/home/user/ClawTeam-OpenClaw" ]; then
+  echo "[LOBSTER] Installing ClawTeam agent..."
+  cd /home/user/ClawTeam-OpenClaw
+  pip3 install --user -e . > /tmp/clawteam-install.log 2>&1
+  
+  if ! grep -q 'local/bin' /home/user/.bashrc 2>/dev/null; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/user/.bashrc
+  fi
 fi
 BSEOF
 

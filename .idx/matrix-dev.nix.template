@@ -1,0 +1,119 @@
+{ pkgs, ... }: {
+ channel = "stable-23.11";
+ packages = [
+ pkgs.nodejs_20
+ pkgs.tailscale
+ pkgs.openssh
+ pkgs.docker
+ ];
+
+ env = {
+ TS_SOCKET = "/tmp/tailscaled.sock";
+ # 統一配置
+ ROUTER_PASS = "Matrix2026!";
+ JWT_SECRET = "matrix-seed-jwt-secret-shrimpclan";
+ };
+
+ idx.workspace.onStart = {
+ # 1. 暴力併網 (Tailscale)
+ tailscale-up = ''
+ STATE_DIR="/home/user/.tailscale-state"
+ mkdir -p "$STATE_DIR"
+ rm -f /tmp/tailscaled.sock
+
+ echo "[MATRIX] Starting tailscaled..."
+ nohup tailscaled \
+ --tun=userspace-networking \
+ --socket=/tmp/tailscaled.sock \
+ --statedir="$STATE_DIR" \
+ --socks5-server=127.0.0.1:1055 > /tmp/tailscaled.log 2>&1 &
+
+ for i in {1..30}; do
+ if [ -S /tmp/tailscaled.sock ]; then break; fi
+ sleep 1
+ done
+
+ # 替換為你的 Reusable Auth Key
+ AUTH_KEY="tskey-auth-XXXXXXXXXXXXX"
+ WS_SLUG=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
+
+ echo "[MATRIX] Connecting to Tailnet..."
+ tailscale --socket=/tmp/tailscaled.sock up \
+ --authkey="$AUTH_KEY" \
+ --hostname="pain-$WS_SLUG" \
+ --accept-routes \
+ --ssh
+ '';
+
+ # 2. 強制開門 (SSH)
+ sshd-up = ''
+ mkdir -p /home/user/.ssh
+ # 寫入你的中控機公鑰
+ echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... YOUR_PUBLIC_KEY" > /home/user/.ssh/authorized_keys
+ chmod 600 /home/user/.ssh/authorized_keys
+
+ SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
+ SSHD_PATH=$(find /nix/store -name sshd -type f -executable 2>/dev/null | head -1)
+
+ cat > /home/user/.ssh/sshd_config <<SSHEOF
+Port 2222
+HostKey /home/user/.ssh/ssh_host_ed25519_key
+AuthorizedKeysFile /home/user/.ssh/authorized_keys
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+StrictModes no
+PidFile /home/user/.ssh/sshd.pid
+Subsystem sftp $SFTP_PATH
+SSHEOF
+
+ [ -f /home/user/.ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -f /home/user/.ssh/ssh_host_ed25519_key -N ""
+ $SSHD_PATH -f /home/user/.ssh/sshd_config
+ '';
+
+ # 3. Docker & 9router
+ services-up = ''
+ mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
+ export XDG_RUNTIME_DIR=/tmp/run-1000
+ nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd.log 2>&1 &
+
+ for i in {1..30}; do
+ if [ -S /tmp/run-1000/docker.sock ]; then break; fi
+ sleep 1
+ done
+
+ export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"
+
+ DATA_DIR="/home/user/.9router"
+ mkdir -p "$DATA_DIR"
+
+ docker run -d \
+ --name 9router \
+ --restart=unless-stopped \
+ -p 20128:20128 \
+ -v "$DATA_DIR:/app/data" \
+ -e DATA_DIR=/app/data \
+ -e JWT_SECRET="$JWT_SECRET" \
+ -e INITIAL_PASSWORD="$ROUTER_PASS" \
+ -e HOSTNAME=0.0.0.0 \
+ -e REQUIRE_API_KEY=true \
+ decolua/9router:latest
+ '';
+
+ # 4. 報到 (Beacon)
+ beacon-up = ''
+ sleep 15 # 等待網路穩定
+ MY_IP=$(tailscale --socket=/tmp/tailscaled.sock ip -4 2>/dev/null || echo "unknown")
+ WS_SLUG=$(basename "$(pwd)")
+
+ # 替換為你的中控機接收端
+ curl -X POST http://shrimp-nexus-01:18800/api/beacon \
+ -H "Content-Type: application/json" \
+ -d "{
+ \"agent\": \"pain-$WS_SLUG\",
+ \"tailscale_ip\": \"$MY_IP\",
+ \"ssh_port\": 2222,
+ \"status\": \"matrix_born\"
+ }" 2>/dev/null
+ '';
+ };
+}

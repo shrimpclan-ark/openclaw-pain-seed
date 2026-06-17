@@ -1,0 +1,12 @@
+{
+  "name": "matrix-creator",
+  "version": "1.0.0",
+  "description": "Playwright script for Matrix 100 auto-deployment",
+  "main": "matrix-creator.js",
+  "scripts": {
+    "start": "node matrix-creator.js"
+  },
+  "dependencies": {
+    "playwright": "^1.44.0"
+  }
+}
