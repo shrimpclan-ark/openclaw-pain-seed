@@ -5,14 +5,18 @@
     {
       "id": "army_type",
       "type": "enum",
-      "displayName": "選擇部隊組合 (Deployment Mode)",
-      "description": "選擇最適合您的兵種與配置環境",
-      "options": [
-        { "id": "sapper", "displayName": "工兵大隊 (Docker + 9router + Claude Code CLI)" },
-        { "id": "fresh", "displayName": "清爽大軍 (Docker + 9router)" },
-        { "id": "lobster", "displayName": "龍蝦小兵 (Docker + 9router + OpenClaw)" }
+      "title": "選擇部隊組合 (Deployment Mode)",
+      "default": "sapper",
+      "enum": [
+        "sapper",
+        "fresh",
+        "lobster"
       ],
-      "default": "sapper"
+      "enumLabels": [
+        "工兵大隊 (Docker + 9router + Claude Code CLI)",
+        "清爽大軍 (Docker + 9router)",
+        "龍蝦小兵 (Docker + 9router + OpenClaw)"
+      ]
     }
   ]
 }
