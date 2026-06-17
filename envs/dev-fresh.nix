@@ -154,6 +154,9 @@ EOFC
             decolua/9router:latest > /dev/null 2>&1
         fi
       fi
+
+      # 修復 Root 執行造成的權限問題，把所有權還給一般使用者 (uid 1000)
+      chown -R 1000:1000 /home/user/.9router /home/user/.claude /tmp/run-1000 2>/dev/null || true
 BSEOF
 
       chmod +x /tmp/bootstrap.sh

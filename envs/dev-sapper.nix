@@ -168,6 +168,10 @@ EOFC
 CONFEOF
       fi
 
+      # 修復 Root 執行造成的權限問題，把所有權還給一般使用者 (uid 1000)
+      chown -R 1000:1000 /home/user/.9router /home/user/.claude /tmp/run-1000 2>/dev/null || true
+      chmod 644 /home/user/.claude/settings.json 2>/dev/null || true
+
       # 4. Global Claude Code install
       if ! command -v claude &>/dev/null; then
         npm install -g @anthropic-ai/claude-code > /tmp/claude-install.log 2>&1
