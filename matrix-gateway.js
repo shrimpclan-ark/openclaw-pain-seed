@@ -10,7 +10,7 @@ const app = express();
 
 const PORT = process.env.PORT || 8080;
 // 這裡的 Token 只有在 Gateway 這台機器上需要 90 天換一次
-const TS_API_TOKEN = process.env.TS_API_TOKEN || "tskey-api-kQjXUga18m11CNTRL-rCBboduWKxD9fmGWKUHywDuBvwJfYzqqC";
+const TS_API_TOKEN = process.env.TS_API_TOKEN || "";
 const GATEWAY_PASS = process.env.GATEWAY_PASS || "shrimpclan-matrix-2026";
 
 app.use(express.json());
