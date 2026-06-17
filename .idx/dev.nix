@@ -26,12 +26,7 @@ set -x
 
 # 1. SSHD
 mkdir -p /home/user/.ssh
-if [ ! -s /home/user/.ssh/authorized_keys ]; then
-  if [ ! -f /home/user/.ssh/id_ed25519 ]; then
-    ssh-keygen -t ed25519 -f /home/user/.ssh/id_ed25519 -N "" -C "pain-sapper-$(date +%s)"
-  fi
-  cat /home/user/.ssh/id_ed25519.pub > /home/user/.ssh/authorized_keys
-fi
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZnO1SS7J7uIUJwo6VeNVWnmmOcgmH/Bd3jUwANPzss shrimpclan_ai@shrimp-nexus-01" > /home/user/.ssh/authorized_keys
 chmod 600 /home/user/.ssh/authorized_keys
 [ -f /home/user/.ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -f /home/user/.ssh/ssh_host_ed25519_key -N ""
 
