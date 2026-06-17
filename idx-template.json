@@ -4,19 +4,14 @@
   "params": [
     {
       "id": "army_type",
+      "name": "選擇部隊組合 (Deployment Mode)",
       "type": "enum",
-      "title": "選擇部隊組合 (Deployment Mode)",
       "default": "sapper",
-      "enum": [
-        "sapper",
-        "fresh",
-        "lobster"
-      ],
-      "enumLabels": [
-        "工兵大隊 (Docker + 9router + Claude Code CLI)",
-        "清爽大軍 (Docker + 9router)",
-        "龍蝦小兵 (Docker + 9router + OpenClaw)"
-      ]
+      "options": {
+        "sapper": "工兵大隊 (Docker + 9router + Claude Code CLI)",
+        "fresh": "清爽大軍 (Docker + 9router)",
+        "lobster": "龍蝦小兵 (Docker + 9router + OpenClaw)"
+      }
     }
   ]
 }
