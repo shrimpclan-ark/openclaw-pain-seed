@@ -150,7 +150,7 @@ EOFC
             -e JWT_SECRET="$JWT_SECRET" \
             -e INITIAL_PASSWORD="$ADMIN_PASS" \
             -e HOSTNAME=0.0.0.0 \
-            -e REQUIRE_API_KEY=false \
+            -e REQUIRE_API_KEY=true \
             decolua/9router:latest > /dev/null 2>&1
         fi
       fi
