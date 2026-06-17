@@ -19,37 +19,75 @@
   };
 
   idx.workspace.onStart = {
-    # 1. Tailscale 併網
-    tailscale-up = ''
+    # 1. 併網 + 開門 + Docker + 9router 一鍵非同步拉起 (The Necromancer Core)
+    # 全部封裝在背景執行，避免 Nix 主線程阻塞被 SIGKILL
+    matrix-bootstrap = ''
+      echo "[FRESH] Launching Non-Blocking Bootstrap in background..."
+
+      cat > /tmp/bootstrap.sh << 'BSEOF'
+      #!/usr/bin/env bash
+      set -x
+
+      # --- STEP A: Tailscale 併網 ---
       STATE_DIR="/home/user/.tailscale-state"
       mkdir -p "$STATE_DIR"
       rm -f /tmp/tailscaled.sock
 
-      echo "[FRESH] Starting tailscaled..."
+      echo "[MATRIX-BG] Starting tailscaled..."
       nohup tailscaled \
         --tun=userspace-networking \
         --socket=/tmp/tailscaled.sock \
         --statedir="$STATE_DIR" \
         --socks5-server=127.0.0.1:1055 > /tmp/tailscaled.log 2>&1 &
 
+      # 非同步等待 socket
       for i in {1..30}; do
-        if [ -S /tmp/tailscaled.sock ]; then echo "[FRESH] Tailscale socket ready after $i seconds!"; break; fi
+        [ -S /tmp/tailscaled.sock ] && break
         sleep 1
       done
-      [ -S /tmp/tailscaled.sock ] || { echo "[FRESH] tailscaled failed to start"; exit 1; }
-      tailscale --socket=/tmp/tailscaled.sock status 2>/dev/null | head -5
-      echo "[FRESH] Tailscale daemon ready."
-    '';
 
-    # 2. SSHD
-    sshd-up = ''
+      if [ -S /tmp/tailscaled.sock ]; then
+        WS_SLUG=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
+        HOSTNAME="pain-$WS_SLUG"
+
+        echo "[MATRIX-BG] Requesting fresh Auth Key from Gateway..."
+        RESPONSE=$(curl -s -X POST "https://matrix-gateway-753796904076.us-central1.run.app/api/get-key" \
+          -H "X-Matrix-Pass: shrimpclan-matrix-2026" \
+          -H "Content-Type: application/json" \
+          -d "{\"agent\":\"$HOSTNAME\"}")
+
+        AUTH_KEY=$(echo "$RESPONSE" | jq -r .key)
+
+        if [ -n "$AUTH_KEY" ] && [ "$AUTH_KEY" != "null" ]; then
+          echo "[MATRIX-BG] Key received! Connecting to Tailnet..."
+          tailscale --socket=/tmp/tailscaled.sock up \
+            --authkey="$AUTH_KEY" \
+            --hostname="$HOSTNAME" \
+            --accept-routes \
+            --ssh
+
+          MY_IP=$(tailscale --socket=/tmp/tailscaled.sock ip -4 2>/dev/null || echo "unknown")
+          WAKEUP_URL="https://idx.google.com/$WS_SLUG"
+          VM_HOST="$WEB_HOST"
+
+          # 回報座標 (Beacon to hp-matrix)
+          curl -s -X POST http://shrimp-nexus-01:18800/api/beacon \
+            -H "Content-Type: application/json" \
+            -d "{\"agent\":\"pain-$WS_SLUG\",\"tailscale_ip\":\"$MY_IP\",\"wakeup_url\":\"$WAKEUP_URL\",\"vm_host\":\"$VM_HOST\",\"status\":\"matrix_born\"}" > /tmp/beacon.log 2>&1 || true
+        else
+          echo "[MATRIX-BG] ❌ Failed to get Auth Key: $RESPONSE"
+        fi
+      fi
+
+      # --- STEP B: SSHD 開門 ---
       mkdir -p /home/user/.ssh
       echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZnO1SS7J7uIUJwo6VeNVWnmmOcgmH/Bd3jUwANPzss shrimpclan_ai@shrimp-nexus-01" > /home/user/.ssh/authorized_keys
       chmod 600 /home/user/.ssh/authorized_keys
 
-      if [ ! -f /home/user/.ssh/sshd_config ]; then
-        SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
-        cat > /home/user/.ssh/sshd_config <<SSHEOF
+      SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
+      SSHD_PATH=$(find /nix/store -name sshd -type f -executable 2>/dev/null | head -1)
+
+      cat > /home/user/.ssh/sshd_config <<SSHEOF
 Port 2222
 HostKey /home/user/.ssh/ssh_host_ed25519_key
 AuthorizedKeysFile /home/user/.ssh/authorized_keys
@@ -59,81 +97,68 @@ StrictModes no
 PidFile /home/user/.ssh/sshd.pid
 Subsystem sftp $SFTP_PATH
 SSHEOF
-      fi
+
       [ -f /home/user/.ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -f /home/user/.ssh/ssh_host_ed25519_key -N ""
+      $SSHD_PATH -f /home/user/.ssh/sshd_config 2>/dev/null
 
-      /usr/bin/sshd -f /home/user/.ssh/sshd_config 2>/dev/null
-      echo "[FRESH] SSHD on port 2222 (public-key only)"
-    '';
-
-    # 3. Docker Daemon (Rootless)
-    docker-up = ''
-      echo "[FRESH] Starting Docker Daemon (Rootless)..."
+      # --- STEP C: Docker Daemon (Rootless) ---
       mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
       export XDG_RUNTIME_DIR=/tmp/run-1000
       nohup dockerd-rootless --host=unix:///tmp/run-1000/docker.sock > /tmp/dockerd.log 2>&1 &
+
       for i in {1..20}; do
-        if [ -S /tmp/run-1000/docker.sock ]; then echo "[FRESH] Docker ready after $i seconds!"; break; fi
+        [ -S /tmp/run-1000/docker.sock ] && break
         sleep 2
       done
 
-      if ! grep -q 'DOCKER_HOST.*tmp/run-1000' /home/user/.bashrc 2>/dev/null; then
-        echo 'export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"' >> /home/user/.bashrc
-      fi
-      echo "[FRESH] Docker Daemon ready."
-    '';
+      if [ -S /tmp/run-1000/docker.sock ]; then
+        if ! grep -q 'DOCKER_HOST.*tmp/run-1000' /home/user/.bashrc 2>/dev/null; then
+          echo 'export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"' >> /home/user/.bashrc
+        fi
+        export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"
 
-    # 4. 9router
-    docker-9router-up = ''
-      export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"
-      echo "[FRESH] Waiting for Docker..."
-      for i in {1..30}; do
-        if docker ps >/dev/null 2>&1; then echo "[FRESH] Docker ready after $i seconds!"; break; fi
-        sleep 2
-      done
+        # --- STEP D: 9router 啟動 ---
+        DATA_DIR="/home/user/.9router"
+        CRED_FILE="$DATA_DIR/credentials.txt"
+        mkdir -p "$DATA_DIR"
 
-      DATA_DIR="/home/user/.9router"
-      CRED_FILE="$DATA_DIR/credentials.txt"
-      mkdir -p "$DATA_DIR"
+        _rand_hex() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
 
-      _rand_hex() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
-
-      if [ ! -f "$CRED_FILE" ]; then
-        JWT_SECRET="pain-9r-$(_rand_hex 16)"
-        ADMIN_PASS="pw-$(_rand_hex 8)"
-        cat > "$CRED_FILE" <<EOF
+        if [ ! -f "$CRED_FILE" ]; then
+          JWT_SECRET="fresh-9r-$(_rand_hex 16)"
+          ADMIN_PASS="pw-$(_rand_hex 8)"
+          cat > "$CRED_FILE" <<EOFC
 JWT_SECRET=$JWT_SECRET
 INITIAL_PASSWORD=$ADMIN_PASS
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-EOF
-        chmod 600 "$CRED_FILE"
+EOFC
+          chmod 600 "$CRED_FILE"
+        fi
+        . "$CRED_FILE"
+
+        docker pull decolua/9router:latest > /tmp/9router-pull.log 2>&1 &
+
+        if docker ps -a --format '{{.Names}}' | grep -qx '9router'; then
+          docker start 9router > /dev/null 2>&1
+        else
+          docker run -d \
+            --name 9router \
+            --restart=unless-stopped \
+            -p 20128:20128 \
+            -v "$DATA_DIR:/app/data" \
+            -e DATA_DIR=/app/data \
+            -e JWT_SECRET="$JWT_SECRET" \
+            -e INITIAL_PASSWORD="$ADMIN_PASS" \
+            -e HOSTNAME=0.0.0.0 \
+            -e REQUIRE_API_KEY=true \
+            decolua/9router:latest > /dev/null 2>&1
+        fi
       fi
-      . "$CRED_FILE"
+BSEOF
 
-      docker pull decolua/9router:latest > /tmp/9router-pull.log 2>&1 &
-
-      if docker ps -a --format '{{.Names}}' | grep -qx '9router'; then
-        docker start 9router > /dev/null 2>&1
-        echo "[FRESH] 9router restarted"
-      else
-        docker run -d \
-          --name 9router \
-          --restart=unless-stopped \
-          -p 20128:20128 \
-          -v "$DATA_DIR:/app/data" \
-          -e DATA_DIR=/app/data \
-          -e JWT_SECRET="$JWT_SECRET" \
-          -e INITIAL_PASSWORD="$ADMIN_PASS" \
-          -e HOSTNAME=0.0.0.0 \
-          -e REQUIRE_API_KEY=true \
-          decolua/9router:latest > /dev/null 2>&1
-        echo "[FRESH] 9router deployed"
-      fi
-
-      echo "============================================"
-      echo "  [FRESH] 9router setup completed!"
-      echo "  Admin pass: $ADMIN_PASS"
-      echo "============================================"
+      chmod +x /tmp/bootstrap.sh
+      nohup /tmp/bootstrap.sh > /tmp/bootstrap.log 2>&1 &
+      echo "[MATRIX] Bootstrap fired successfully."
     '';
   };
 }
