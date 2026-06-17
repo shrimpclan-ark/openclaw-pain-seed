@@ -12,7 +12,7 @@
 
 本專案支援 **Project IDX 自訂範本**。您可以直接點擊下方按鈕，在開啟的頁面下拉選單中選擇您想要的「部隊組合」：
 
-[![Open in Firebase Studio](https://studio.firebase.google.com/static/images/btn_firebase_studio.svg)](https://idx.google.com/new?template=https://github.com/shrimpclan-ark/openclaw-pain-seed)
+[![Open in Project IDX](https://cdn.idx.dev/btn/open_dark_32.svg)](https://idx.google.com/new?template=https://github.com/shrimpclan-ark/openclaw-pain-seed/tree/main)
 
 * **🍃 清爽大軍 (fresh)**：極簡環境。僅拉起 Tailscale、Rootless Docker 和 9router AI 閘道（適合當成 API 代理、背景服務、分散式任務 Worker）。
 * **🧠 工兵大隊 (sapper)**：【推薦】預裝 Node.js 22 + Docker + 9router，並自動全局配置與安裝 Claude Code CLI，開箱即用。
