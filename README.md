@@ -35,7 +35,8 @@
 
 | 資源 | 說明 |
 |------|------|
-| **2 vCPU + 4GB RAM** | Google IDX 免費額度 |
+| **2 vCPU + 8GB RAM** | Google IDX 免費算力額度 |
+| **10GB Storage** | SSD 儲存空間上限 |
 | **Docker 24.0.9** | Rootless 模式，安全隔離 |
 | **9router AI 閘道** | Port 20128，彙整免費模型 |
 | **Claude Code** (sapper/lobster) | 設定好指向本地 9router |
