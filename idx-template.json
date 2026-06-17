@@ -1,8 +1,9 @@
 {
   "name": "🦐 PAIN-000 AI 龍蝦代理工場",
   "description": "選擇您的部隊組合，一鍵拉起開發工作區！",
-  "params": {
-    "army_type": {
+  "params": [
+    {
+      "id": "army_type",
       "type": "enum",
       "displayName": "選擇部隊組合 (Deployment Mode)",
       "description": "選擇最適合您的兵種與配置環境",
@@ -13,5 +14,5 @@
       ],
       "default": "sapper"
     }
-  }
+  ]
 }
