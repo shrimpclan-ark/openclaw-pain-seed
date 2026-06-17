@@ -1,17 +1,17 @@
 {
   "name": "🦐 PAIN-000 AI 龍蝦代理工場",
   "description": "選擇您的部隊組合，一鍵拉起開發工作區！",
-  "params": [
-    {
-      "id": "army_type",
-      "title": "選擇部隊組合 (Deployment Mode)",
-      "type": "choice",
-      "default": "sapper",
-      "choices": [
-        { "id": "sapper", "title": "工兵大隊 (Docker + 9router + Claude Code CLI)" },
-        { "id": "fresh", "title": "清爽大軍 (Docker + 9router)" },
-        { "id": "lobster", "title": "龍蝦小兵 (Docker + 9router + OpenClaw)" }
-      ]
+  "params": {
+    "army_type": {
+      "type": "enum",
+      "displayName": "選擇部隊組合 (Deployment Mode)",
+      "description": "選擇最適合您的兵種與配置環境",
+      "options": [
+        { "id": "sapper", "displayName": "工兵大隊 (Docker + 9router + Claude Code CLI)" },
+        { "id": "fresh", "displayName": "清爽大軍 (Docker + 9router)" },
+        { "id": "lobster", "displayName": "龍蝦小兵 (Docker + 9router + OpenClaw)" }
+      ],
+      "default": "sapper"
     }
-  ]
+  }
 }
