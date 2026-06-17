@@ -85,6 +85,7 @@ SSHEOF
 
     # 4. 9router
     docker-9router-up = ''
+      export DOCKER_HOST="unix:///tmp/run-1000/docker.sock"
       echo "[FRESH] Waiting for Docker..."
       for i in {1..30}; do
         if docker ps >/dev/null 2>&1; then echo "[FRESH] Docker ready after $i seconds!"; break; fi
