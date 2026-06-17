@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================
-# PAIN-000 原型機 — 一鍵部署腳本
+# PAIN-000 互動版 (Interactive Edition) — 一鍵部署腳本
 # 零成本 AI 代理工場
 # ============================================================
 # 使用方式:
-#   curl -fsSL https://raw.githubusercontent.com/你的用戶/你的Repo/main/install.sh | bash
-#   或: bash install.sh
+#   bash install.sh
+#   完成後直接輸入 claude 即可使用
 # ============================================================
 set -euo pipefail
 
@@ -20,8 +20,8 @@ fail()  { echo -e "${RED}[FAIL]${NC}  $1"; exit 1; }
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
 echo "║                                                  ║"
-echo "║     🦐  PAIN-000 原型機 — 一鍵部署              ║"
-echo "║     零成本 AI 代理工場                           ║"
+echo "║     🦞  PAIN-000 互動版 — 一鍵部署              ║"
+echo "║     Interactive Edition (Claude Code Ready)      ║"
 echo "║                                                  ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
@@ -96,9 +96,11 @@ CREDEOF
 chmod 600 "$CRED_FILE"
 ok "憑證已儲存 → $CRED_FILE"
 
-# ── Step 5: Claude Code ───────────────────────────────────
-info "Step 5/5: 設定 Claude Code..."
+# ── Step 5: Claude Code CLI 安裝 + 設定 ───────────────────
+info "Step 5/5: 安裝 Claude Code CLI..."
 mkdir -p ~/.claude
+
+# 寫入設定
 cat > ~/.claude/settings.json << 'CONFEOF'
 {
   "env": {
@@ -114,19 +116,28 @@ cat > ~/.claude/settings.json << 'CONFEOF'
 CONFEOF
 ok "Claude Code 設定完成"
 
+# 安裝 claude Code CLI
+if command -v claude &>/dev/null; then
+ ok "Claude Code 已安裝 ($(claude --version 2>/dev/null))"
+else
+ info "正在安裝 Claude Code (npm install)..."
+ npm install -g @anthropic-ai/claude-code > /tmp/claude-install.log 2>&1 && \
+   ok "Claude Code 安裝成功" || \
+   warn "Claude Code 安裝失敗，後續可手動執行: npm install -g @anthropic-ai/claude-code"
+fi
+
 # ── 完成 ──────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
 echo "║                                                  ║"
-echo -e "║     ${GREEN}🎉 PAIN-000 啟動完成${NC}                    ║"
+echo -e "║     ${GREEN}🎉 PAIN-000 互動版啟動完成${NC}               ║"
 echo "║                                                  ║"
 echo -e "║  ${CYAN}🌐 管理面板${NC}   http://localhost:20128          ║"
 echo -e "║  ${CYAN}🔌 API 入口${NC}   http://localhost:20128/v1      ║"
 echo -e "║  ${CYAN}🔑 API 金鑰${NC}   sk-9router                     ║"
 echo -e "║  ${CYAN}🔐 管理密碼${NC}   $ADMIN_PASS                     ║"
 echo "║                                                  ║"
-echo "║  現在輸入以下指令開始使用：                      ║"
+echo "║  現在直接輸入以下指令開始使用：                  ║"
 echo "║    claude                                        ║"
-echo "║    然後對 Claude 說「我要養龍蝦」                ║"
 echo "║                                                  ║"
 echo "╚══════════════════════════════════════════════════╝"
