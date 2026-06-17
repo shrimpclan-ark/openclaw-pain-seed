@@ -7,10 +7,10 @@
       "title": "選擇部隊組合 (Deployment Mode)",
       "type": "enum",
       "default": "sapper",
-      "enum": ["fresh", "sapper", "lobster"],
+      "enum": ["sapper", "fresh", "lobster"],
       "enumLabels": [
-        "清爽大軍 (Docker + 9router)",
         "工兵大隊 (Docker + 9router + Claude Code CLI)",
+        "清爽大軍 (Docker + 9router)",
         "龍蝦小兵 (Docker + 9router + OpenClaw)"
       ]
     }
