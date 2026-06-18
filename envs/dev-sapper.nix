@@ -148,7 +148,7 @@ EOFC
             -e JWT_SECRET="$JWT_SECRET" \
             -e INITIAL_PASSWORD="$ADMIN_PASS" \
             -e HOSTNAME=0.0.0.0 \
-            -e REQUIRE_API_KEY=false \
+            -e REQUIRE_API_KEY=true \
             decolua/9router:latest > /dev/null 2>&1
         fi
 
@@ -157,7 +157,7 @@ EOFC
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:20128/api",
-    "ANTHROPIC_AUTH_TOKEN": "sk-9router",
+    "ANTHROPIC_AUTH_TOKEN": "sk-$JWT_SECRET",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/deepseek-v4-flash-free",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "oc/mimo-v2.5-free",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "oc/mimo-v2.5-free",
