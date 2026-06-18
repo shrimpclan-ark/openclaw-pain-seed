@@ -16,7 +16,7 @@
 
 * **🍃 清爽大軍 (fresh)**：極簡環境。僅拉起 Rootless Docker 和 9router AI 閘道（適合當成 API 代理、背景服務、分散式任務 Worker）。
 * **🧠 工兵大隊 (sapper)**：【推薦】預裝 Node.js 22 + Docker + 9router，並自動全局配置與安裝 Claude Code CLI，開箱即用。
-* **🦀 龍蝦小兵 (lobster)**：工兵大隊完整環境外，全自動 Clone 並部署 `ClawTeam-OpenClaw` 代理框架。
+* **🦀 龍蝦小兵 (lobster)**：工兵大隊完整環境外，全自動部署 OpenClaw 平台並安裝 `ClawTeam-OpenClaw` 多代理協調框架（上游 win4r 版）。
 
 ### 🎬 90 秒快速啟動
 

@@ -183,10 +183,35 @@ CONFEOF
         npm install -g @anthropic-ai/claude-code@2.1.179 > /tmp/claude-install.log 2>&1
       fi
 
-      # 5. Clone and install ClawTeam-OpenClaw
+      # 5. Deploy OpenClaw Platform
+      echo "[LOBSTER] Installing OpenClaw platform..."
+      if ! command -v openclaw &>/dev/null; then
+        npm install -g openclaw@latest > /tmp/openclaw-install.log 2>&1
+      fi
+
+      if command -v openclaw &>/dev/null; then
+        echo "[LOBSTER] OpenClaw installed: $(openclaw --version 2>/dev/null || echo 'ok')"
+
+        # 建立 OpenClaw 資料目錄
+        mkdir -p /home/user/.openclaw
+
+        # 設定 OpenClaw 使用 9router 作為 LLM 後端
+        if [ ! -f /home/user/.openclaw/.env ]; then
+          cat > /home/user/.openclaw/.env <<OCEOF
+# OpenClaw 環境設定 — 指向本地 9router
+OPENCLAW_LLM_BASE_URL=http://127.0.0.1:20128/api
+OPENCLAW_LLM_API_KEY=sk-$JWT_SECRET
+OCEOF
+          chmod 600 /home/user/.openclaw/.env
+        fi
+      else
+        echo "[LOBSTER] ⚠️ OpenClaw install failed, check /tmp/openclaw-install.log"
+      fi
+
+      # 6. Clone and install ClawTeam-OpenClaw (upstream: win4r)
       if [ ! -d "/home/user/ClawTeam-OpenClaw" ]; then
-        echo "[LOBSTER] Cloning ClawTeam-OpenClaw..."
-        git clone --depth 1 --branch main https://github.com/cmwang2021/ClawTeam-OpenClaw.git /home/user/ClawTeam-OpenClaw
+        echo "[LOBSTER] Cloning ClawTeam-OpenClaw from upstream (win4r)..."
+        git clone --depth 1 --branch main https://github.com/win4r/ClawTeam-OpenClaw.git /home/user/ClawTeam-OpenClaw
       fi
 
       if [ -d "/home/user/ClawTeam-OpenClaw" ]; then
