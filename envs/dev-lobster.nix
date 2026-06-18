@@ -183,30 +183,27 @@ CONFEOF
         npm install -g @anthropic-ai/claude-code@2.1.179 > /tmp/claude-install.log 2>&1
       fi
 
-      # 5. Deploy OpenClaw Platform
-      echo "[LOBSTER] Installing OpenClaw platform..."
-      if ! command -v openclaw &>/dev/null; then
-        npm install -g openclaw@latest > /tmp/openclaw-install.log 2>&1
-      fi
+      # 5. Deploy OpenClaw Platform (Docker, 比照 9router)
+      echo "[LOBSTER] Deploying OpenClaw platform via Docker..."
+      OC_DATA_DIR="/home/user/.openclaw"
+      mkdir -p "$OC_DATA_DIR"
 
-      if command -v openclaw &>/dev/null; then
-        echo "[LOBSTER] OpenClaw installed: $(openclaw --version 2>/dev/null || echo 'ok')"
+      docker pull ghcr.io/openclaw/openclaw:latest > /tmp/openclaw-pull.log 2>&1 &
 
-        # 建立 OpenClaw 資料目錄
-        mkdir -p /home/user/.openclaw
-
-        # 設定 OpenClaw 使用 9router 作為 LLM 後端
-        if [ ! -f /home/user/.openclaw/.env ]; then
-          cat > /home/user/.openclaw/.env <<OCEOF
-# OpenClaw 環境設定 — 指向本地 9router
-OPENCLAW_LLM_BASE_URL=http://127.0.0.1:20128/api
-OPENCLAW_LLM_API_KEY=sk-$JWT_SECRET
-OCEOF
-          chmod 600 /home/user/.openclaw/.env
-        fi
+      if docker ps -a --format '{{.Names}}' | grep -qx 'openclaw'; then
+        docker start openclaw > /dev/null 2>&1
       else
-        echo "[LOBSTER] ⚠️ OpenClaw install failed, check /tmp/openclaw-install.log"
+        docker run -d \
+          --name openclaw \
+          --restart=unless-stopped \
+          -p 3000:3000 \
+          -v "$OC_DATA_DIR:/home/openclaw/.openclaw" \
+          -e OPENCLAW_LLM_BASE_URL="http://host.docker.internal:20128/api" \
+          -e OPENCLAW_LLM_API_KEY="sk-$JWT_SECRET" \
+          ghcr.io/openclaw/openclaw:latest > /dev/null 2>&1
       fi
+
+      echo "[LOBSTER] OpenClaw container scheduled (port 3000)"
 
       # 6. Clone and install ClawTeam-OpenClaw (upstream: win4r)
       if [ ! -d "/home/user/ClawTeam-OpenClaw" ]; then
