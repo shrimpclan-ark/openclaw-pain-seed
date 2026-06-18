@@ -10,8 +10,14 @@
       "options": {
         "sapper": "工兵大隊 (Docker + 9router + Claude Code CLI)",
         "fresh": "清爽大軍 (Docker + 9router)",
-        "lobster": "龍蝦小兵 (Docker + 9router + OpenClaw)"
+        "lobster": "龍蝦小兵 (Docker + 9router + OpenClaw + ClawTeam)"
       }
+    },
+    {
+      "id": "enable_remote_access",
+      "name": "🦐 加入蝦網 (Tailscale + SSH + Beacon 回報)",
+      "type": "boolean",
+      "default": false
     }
   ]
 }
