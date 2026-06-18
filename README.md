@@ -53,7 +53,7 @@
 | **Tailscale 併網** | ❌ 關閉 | `ENABLE_REMOTE_ACCESS=true` | 將工作區加入私有 Tailnet VPN，取得內網 IP |
 | **SSH 開門 (Port 2222)** | ❌ 關閉 | `ENABLE_REMOTE_ACCESS=true` | 啟動 SSHD，使用固定 authorized_keys 允許特定公鑰遠端登入 |
 | **Beacon 回報** | ❌ 關閉 | `ENABLE_REMOTE_ACCESS=true` | 向 `shrimp-nexus-01:18800/api/beacon` 發送 HTTP POST，回報工作區 IP、hostname 與狀態 |
-| **Docker 9router 容器** | ✅ 啟動 | 永遠 | 從 Docker Hub 拉取 `decolua/9router:v2.1`，在 localhost:20128 代理免費 AI 模型 |
+| **Docker 9router 容器** | ✅ 啟動 | 永遠 | 從 Docker Hub 拉取 `decolua/9router:0.5.4`，在 localhost:20128 代理免費 AI 模型 |
 | **Claude Code 安裝** | ✅ 啟動 | sapper/lobster | 全域安裝 `@anthropic-ai/claude-code@2.1.179` |
 
 ### 停用遠端存取

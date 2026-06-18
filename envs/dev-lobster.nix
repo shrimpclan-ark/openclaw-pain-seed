@@ -140,7 +140,7 @@ EOFC
         fi
         . "$CRED_FILE"
 
-        docker pull decolua/9router:v2.1 > /tmp/9router-pull.log 2>&1 &
+        docker pull decolua/9router:0.5.4 > /tmp/9router-pull.log 2>&1 &
 
         if docker ps -a --format '{{.Names}}' | grep -qx '9router'; then
           docker start 9router > /dev/null 2>&1
@@ -155,7 +155,7 @@ EOFC
             -e INITIAL_PASSWORD="$ADMIN_PASS" \
             -e HOSTNAME=0.0.0.0 \
             -e REQUIRE_API_KEY=true \
-            decolua/9router:v2.1 > /dev/null 2>&1
+            decolua/9router:0.5.4 > /dev/null 2>&1
         fi
 
         # 寫入 Claude Code 設定

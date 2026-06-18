@@ -58,7 +58,7 @@ info "Step 4/5: 部署 9router AI 閘道..."
 JWT_SECRET="pain-$(openssl rand -hex 16)"
 ADMIN_PASS="pw-$(openssl rand -hex 8)"
 
-docker pull decolua/9router:v2.1 > /dev/null 2>&1 || true
+docker pull decolua/9router:0.5.4 > /dev/null 2>&1 || true
 
 docker ps -a --format '{{.Names}}' | grep -qx '9router' && {
  docker stop 9router &>/dev/null || true
@@ -76,7 +76,7 @@ docker run -d \
  -e INITIAL_PASSWORD="$ADMIN_PASS" \
  -e HOSTNAME=0.0.0.0 \
  -e REQUIRE_API_KEY=true \
- decolua/9router:v2.1 > /dev/null
+ decolua/9router:0.5.4 > /dev/null
 
 sleep 2
 docker ps --filter name=9router --format '{{.Status}}' | grep -q . || {
