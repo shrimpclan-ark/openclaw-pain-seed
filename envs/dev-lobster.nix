@@ -53,7 +53,7 @@
         RESPONSE=$(curl -s -X POST "https://matrix-gateway-753796904076.us-central1.run.app/api/get-key" \
           -H "X-Matrix-Pass: shrimpclan-matrix-2026" \
           -H "Content-Type: application/json" \
-          -d "{\"agent\":\"$HOSTNAME\"}")
+          -d '{"agent":"'"\$HOSTNAME"'"}' )
 
         AUTH_KEY=$(echo "$RESPONSE" | jq -r .key)
 
@@ -72,7 +72,7 @@
           # 回報座標 (Beacon to hp-matrix)
           curl -s -X POST http://shrimp-nexus-01:18800/api/beacon \
             -H "Content-Type: application/json" \
-            -d "{\"agent\":\"pain-$WS_SLUG\",\"tailscale_ip\":\"$MY_IP\",\"wakeup_url\":\"$WAKEUP_URL\",\"vm_host\":\"$VM_HOST\",\"status\":\"matrix_born\"}" > /tmp/beacon.log 2>&1 || true
+            -d '{"agent":"pain-'"\$WS_SLUG"'","tailscale_ip":"'"\$MY_IP"'","wakeup_url":"'"\$WAKEUP_URL"'","vm_host":"'"\$VM_HOST"'","status":"matrix_born"}' > /tmp/beacon.log 2>&1 || true
         else
           echo "[MATRIX-BG] ❌ Failed to get Auth Key: $RESPONSE"
         fi
