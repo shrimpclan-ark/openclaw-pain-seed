@@ -140,7 +140,7 @@ EOFC
         fi
         . "$CRED_FILE"
 
-        docker pull decolua/9router:0.5.4 > /tmp/9router-pull.log 2>&1 &
+        docker pull decolua/9router:0.4.71 > /tmp/9router-pull.log 2>&1 &
 
         if docker ps -a --format '{{.Names}}' | grep -qx '9router'; then
           docker start 9router > /dev/null 2>&1
@@ -155,7 +155,7 @@ EOFC
             -e INITIAL_PASSWORD="$ADMIN_PASS" \
             -e HOSTNAME=0.0.0.0 \
             -e REQUIRE_API_KEY=true \
-            decolua/9router:0.5.4 > /dev/null 2>&1
+            decolua/9router:0.4.71 > /dev/null 2>&1
         fi
 
         # 寫入 Claude Code 設定
@@ -163,7 +163,7 @@ EOFC
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:20128/api",
-    "ANTHROPIC_AUTH_TOKEN": "sk-$JWT_SECRET",
+    "ANTHROPIC_AUTH_TOKEN": "sk-9router",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/deepseek-v4-flash-free",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "oc/mimo-v2.5-free",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "oc/mimo-v2.5-free",
