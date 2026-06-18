@@ -58,7 +58,7 @@ info "Step 4/5: 部署 9router AI 閘道..."
 JWT_SECRET="pain-$(openssl rand -hex 16)"
 ADMIN_PASS="pw-$(openssl rand -hex 8)"
 
-docker pull decolua/9router:latest > /dev/null 2>&1 || true
+docker pull decolua/9router:v2.1 > /dev/null 2>&1 || true
 
 docker ps -a --format '{{.Names}}' | grep -qx '9router' && {
  docker stop 9router &>/dev/null || true
@@ -76,7 +76,7 @@ docker run -d \
  -e INITIAL_PASSWORD="$ADMIN_PASS" \
  -e HOSTNAME=0.0.0.0 \
  -e REQUIRE_API_KEY=true \
- decolua/9router:latest > /dev/null
+ decolua/9router:v2.1 > /dev/null
 
 sleep 2
 docker ps --filter name=9router --format '{{.Status}}' | grep -q . || {
@@ -103,10 +103,10 @@ cat > ~/.claude/settings.json << 'CONFEOF'
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:20128/api",
-    "ANTHROPIC_AUTH_TOKEN": "sk-9router",
+    "ANTHROPIC_AUTH_TOKEN": "sk-$JWT_SECRET",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/deepseek-v4-flash-free",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "oc/mimo-v2.5-free",
-    "ANTHOPIC_DEFAULT_HAIKU_MODEL": "oc/mimo-v2.5-free",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "oc/mimo-v2.5-free",
     "DISABLE_AUTOUPDATER": "1"
   },
   "theme": "dark"

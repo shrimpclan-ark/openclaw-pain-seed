@@ -140,7 +140,7 @@ EOFC
         fi
         . "$CRED_FILE"
 
-        docker pull decolua/9router:latest > /tmp/9router-pull.log 2>&1 &
+        docker pull decolua/9router:v2.1 > /tmp/9router-pull.log 2>&1 &
 
         if docker ps -a --format '{{.Names}}' | grep -qx '9router'; then
           docker start 9router > /dev/null 2>&1
@@ -155,7 +155,7 @@ EOFC
             -e INITIAL_PASSWORD="$ADMIN_PASS" \
             -e HOSTNAME=0.0.0.0 \
             -e REQUIRE_API_KEY=true \
-            decolua/9router:latest > /dev/null 2>&1
+            decolua/9router:v2.1 > /dev/null 2>&1
         fi
 
         # 寫入 Claude Code 設定
@@ -180,13 +180,13 @@ CONFEOF
 
       # 4. Global Claude Code install
       if ! command -v claude &>/dev/null; then
-        npm install -g @anthropic-ai/claude-code > /tmp/claude-install.log 2>&1
+        npm install -g @anthropic-ai/claude-code@2.1.179 > /tmp/claude-install.log 2>&1
       fi
 
       # 5. Clone and install ClawTeam-OpenClaw
       if [ ! -d "/home/user/ClawTeam-OpenClaw" ]; then
         echo "[LOBSTER] Cloning ClawTeam-OpenClaw..."
-        git clone https://github.com/cmwang2021/ClawTeam-OpenClaw.git /home/user/ClawTeam-OpenClaw
+        git clone --depth 1 --branch main https://github.com/cmwang2021/ClawTeam-OpenClaw.git /home/user/ClawTeam-OpenClaw
       fi
 
       if [ -d "/home/user/ClawTeam-OpenClaw" ]; then
