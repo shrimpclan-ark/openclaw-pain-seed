@@ -4,9 +4,12 @@
   "description": "Playwright script for Matrix 100 auto-deployment",
   "main": "matrix-creator.js",
   "scripts": {
-    "start": "node matrix-creator.js"
+    "start": "node matrix-creator.js",
+    "gateway": "node matrix-gateway.js"
   },
   "dependencies": {
-    "playwright": "^1.44.0"
+    "playwright": "^1.44.0",
+    "express": "^4.19.2",
+    "axios": "^1.7.2"
   }
 }

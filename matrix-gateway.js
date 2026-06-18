@@ -11,7 +11,11 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 // 這裡的 Token 只有在 Gateway 這台機器上需要 90 天換一次
 const TS_API_TOKEN = process.env.TS_API_TOKEN || "";
-const GATEWAY_PASS = process.env.GATEWAY_PASS || "shrimpclan-matrix-2026";
+if (!process.env.GATEWAY_PASS) {
+    console.error("FATAL ERROR: GATEWAY_PASS environment variable is required.");
+    process.exit(1);
+}
+const GATEWAY_PASS = process.env.GATEWAY_PASS;
 
 app.use(express.json());
 

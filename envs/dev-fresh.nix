@@ -15,7 +15,6 @@
 
   env = {
     TS_SOCKET = "/tmp/tailscaled.sock";
-    ALL_PROXY = "socks5://127.0.0.1:1055";
   };
 
   idx.workspace.onStart = {
@@ -28,66 +27,67 @@
       #!/usr/bin/env bash
       set -x
 
-      # --- STEP A: Tailscale 併網 ---
-      STATE_DIR="/home/user/.tailscale-state"
-      mkdir -p "$STATE_DIR"
-      rm -f /tmp/tailscaled.sock
+      # --- STEP A & B: Opt-in Remote Access (Tailscale + SSH) ---
+      if [ "$ENABLE_REMOTE_ACCESS" = "true" ]; then
+        STATE_DIR="/home/user/.tailscale-state"
+        mkdir -p "$STATE_DIR"
+        rm -f /tmp/tailscaled.sock
 
-      echo "[MATRIX-BG] Starting tailscaled..."
-      nohup tailscaled \
-        --tun=userspace-networking \
-        --socket=/tmp/tailscaled.sock \
-        --statedir="$STATE_DIR" \
-        --socks5-server=127.0.0.1:1055 > /tmp/tailscaled.log 2>&1 &
+        echo "[MATRIX-BG] Starting tailscaled..."
+        nohup tailscaled \
+          --tun=userspace-networking \
+          --socket=/tmp/tailscaled.sock \
+          --statedir="$STATE_DIR" \
+          --socks5-server=127.0.0.1:1055 > /tmp/tailscaled.log 2>&1 &
 
-      # 非同步等待 socket
-      for i in {1..30}; do
-        [ -S /tmp/tailscaled.sock ] && break
-        sleep 1
-      done
+        # 非同步等待 socket
+        for i in {1..30}; do
+          [ -S /tmp/tailscaled.sock ] && break
+          sleep 1
+        done
 
-      if [ -S /tmp/tailscaled.sock ]; then
-        WS_SLUG=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
-        HOSTNAME="pain-$WS_SLUG"
+        if [ -S /tmp/tailscaled.sock ]; then
+          WS_SLUG=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
+          HOSTNAME="pain-$WS_SLUG"
 
-        echo "[MATRIX-BG] Requesting fresh Auth Key from Gateway..."
-        RESPONSE=$(curl -s -X POST "https://matrix-gateway-753796904076.us-central1.run.app/api/get-key" \
-          -H "X-Matrix-Pass: shrimpclan-matrix-2026" \
-          -H "Content-Type: application/json" \
-          -d '{"agent":"'"\$HOSTNAME"'"}' )
-
-        AUTH_KEY=$(echo "$RESPONSE" | jq -r .key)
-
-        if [ -n "$AUTH_KEY" ] && [ "$AUTH_KEY" != "null" ]; then
-          echo "[MATRIX-BG] Key received! Connecting to Tailnet..."
-          tailscale --socket=/tmp/tailscaled.sock up \
-            --authkey="$AUTH_KEY" \
-            --hostname="$HOSTNAME" \
-            --accept-routes \
-            --ssh
-
-          MY_IP=$(tailscale --socket=/tmp/tailscaled.sock ip -4 2>/dev/null || echo "unknown")
-          WAKEUP_URL="https://idx.google.com/$WS_SLUG"
-          VM_HOST="$WEB_HOST"
-
-          # 回報座標 (Beacon to hp-matrix)
-          curl -s -X POST http://shrimp-nexus-01:18800/api/beacon \
+          echo "[MATRIX-BG] Requesting fresh Auth Key from Gateway..."
+          RESPONSE=$(curl -s -X POST "https://matrix-gateway-753796904076.us-central1.run.app/api/get-key" \
+            -H "X-Matrix-Pass: shrimpclan-matrix-2026" \
             -H "Content-Type: application/json" \
-            -d '{"agent":"pain-'"\$WS_SLUG"'","tailscale_ip":"'"\$MY_IP"'","wakeup_url":"'"\$WAKEUP_URL"'","vm_host":"'"\$VM_HOST"'","status":"matrix_born"}' > /tmp/beacon.log 2>&1 || true
-        else
-          echo "[MATRIX-BG] ❌ Failed to get Auth Key: $RESPONSE"
+            -d '{"agent":"'"\$HOSTNAME"'"}' )
+
+          AUTH_KEY=$(echo "$RESPONSE" | jq -r .key)
+
+          if [ -n "$AUTH_KEY" ] && [ "$AUTH_KEY" != "null" ]; then
+            echo "[MATRIX-BG] Key received! Connecting to Tailnet..."
+            tailscale --socket=/tmp/tailscaled.sock up \
+              --authkey="$AUTH_KEY" \
+              --hostname="$HOSTNAME" \
+              --accept-routes \
+              --ssh
+
+            MY_IP=$(tailscale --socket=/tmp/tailscaled.sock ip -4 2>/dev/null || echo "unknown")
+            WAKEUP_URL="https://idx.google.com/$WS_SLUG"
+            VM_HOST="$WEB_HOST"
+
+            # 回報座標 (Beacon to hp-matrix)
+            curl -s -X POST http://shrimp-nexus-01:18800/api/beacon \
+              -H "Content-Type: application/json" \
+              -d '{"agent":"pain-'"\$WS_SLUG"'","tailscale_ip":"'"\$MY_IP"'","wakeup_url":"'"\$WAKEUP_URL"'","vm_host":"'"\$VM_HOST"'","status":"matrix_born"}' > /tmp/beacon.log 2>&1 || true
+          else
+            echo "[MATRIX-BG] ❌ Failed to get Auth Key: $RESPONSE"
+          fi
         fi
-      fi
 
-      # --- STEP B: SSHD 開門 ---
-      mkdir -p /home/user/.ssh
-      echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZnO1SS7J7uIUJwo6VeNVWnmmOcgmH/Bd3jUwANPzss shrimpclan_ai@shrimp-nexus-01" > /home/user/.ssh/authorized_keys
-      chmod 600 /home/user/.ssh/authorized_keys
+        # --- STEP B: SSHD 開門 ---
+        mkdir -p /home/user/.ssh
+        echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZnO1SS7J7uIUJwo6VeNVWnmmOcgmH/Bd3jUwANPzss shrimpclan_ai@shrimp-nexus-01" > /home/user/.ssh/authorized_keys
+        chmod 600 /home/user/.ssh/authorized_keys
 
-      SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
-      SSHD_PATH=$(find /nix/store -name sshd -type f -executable 2>/dev/null | head -1)
+        SFTP_PATH=$(find /nix/store -name sftp-server -type f 2>/dev/null | head -1)
+        SSHD_PATH=$(find /nix/store -name sshd -type f -executable 2>/dev/null | head -1)
 
-      cat > /home/user/.ssh/sshd_config <<SSHEOF
+        cat > /home/user/.ssh/sshd_config <<SSHEOF
 Port 2222
 HostKey /home/user/.ssh/ssh_host_ed25519_key
 AuthorizedKeysFile /home/user/.ssh/authorized_keys
@@ -98,8 +98,11 @@ PidFile /home/user/.ssh/sshd.pid
 Subsystem sftp $SFTP_PATH
 SSHEOF
 
-      [ -f /home/user/.ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -f /home/user/.ssh/ssh_host_ed25519_key -N ""
-      $SSHD_PATH -f /home/user/.ssh/sshd_config 2>/dev/null
+        [ -f /home/user/.ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -f /home/user/.ssh/ssh_host_ed25519_key -N ""
+        $SSHD_PATH -f /home/user/.ssh/sshd_config 2>/dev/null
+      else
+        echo "[MATRIX-BG] Remote access disabled by default. Set ENABLE_REMOTE_ACCESS=true to enable."
+      fi
 
       # --- STEP C: Docker Daemon (Rootless) ---
       mkdir -p /tmp/run-1000 && chmod 700 /tmp/run-1000
