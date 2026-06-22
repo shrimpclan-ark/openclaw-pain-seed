@@ -183,29 +183,124 @@ CONFEOF
         npm install -g @anthropic-ai/claude-code@2.1.179 > /tmp/claude-install.log 2>&1
       fi
 
-      # 5. Deploy OpenClaw Platform (Docker, 比照 9router)
-      echo "[LOBSTER] Deploying OpenClaw platform via Docker..."
-      OC_DATA_DIR="/home/user/.openclaw"
-      mkdir -p "$OC_DATA_DIR"
+      # ════════════════════════════════════════════════════════════
+      # 5. Deploy OpenClaw Platform (v4.4 Battle-Tested Edition)
+      # 修復十難：自建映像 + API key 預註冊 + 雙埠 + bind:lan
+      # ════════════════════════════════════════════════════════════
+      echo "[LOBSTER] Deploying OpenClaw platform (v4.4 battle-tested)..."
 
-      docker pull ghcr.io/openclaw/openclaw:latest > /tmp/openclaw-pull.log 2>&1 &
+      # 5a. 等 9router 完全啟動，然後預註冊 API key（修復陷阱 #9：401 Unauthorized）
+      echo "[LOBSTER] Waiting for 9router to initialize..."
+      for _w in 1 2 3 4 5 6 7 8 9 10; do
+        curl -s http://127.0.0.1:20128/api/health > /dev/null 2>&1 && break
+        sleep 2
+      done
 
+      echo "[LOBSTER] Pre-registering API key sk-9router in 9router DB..."
+      docker exec 9router sh -c 'node -e "
+        const db = require(\"better-sqlite3\")(\"/app/data/db/data.sqlite\");
+        db.prepare(\"INSERT OR REPLACE INTO apiKeys (id, key, name, machineId, isActive, createdAt) VALUES (?, ?, ?, ?, ?, ?)\")
+          .run(1, \"sk-9router\", \"openclaw\", \"\", 1, new Date().toISOString());
+        console.log(\"OK\");
+      "' > /tmp/apikey-register.log 2>&1 || echo "[LOBSTER] WARN: API key registration failed (can retry later)"
+
+      # 5b. 取得 9router 容器 IP（修復：不使用 host.docker.internal，rootless Docker 不支援）
+      NINE_IP=$(docker inspect 9router --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || echo "172.17.0.2")
+      echo "[LOBSTER] 9router container IP = $NINE_IP"
+
+      # 5c. 偵測 Firebase Studio 外部網域
+      WEB_HOST=$(echo "$WEB_HOST" | head -1)
+      [ -z "$WEB_HOST" ] && WEB_HOST="$HOSTNAME"
+      [ -z "$WEB_HOST" ] && WEB_HOST="localhost"
+
+      # 5d. 產生 OpenClaw 設定檔（修復陷阱 #5:雙埠 #6:bind:lan #7:allowedOrigins #9:baseUrl+apiKey）
+      mkdir -p /tmp/openclaw-config
+      cat > /tmp/openclaw-config/openclaw.json <<OCEOF
+{
+  "agents": {
+    "defaults": {
+      "workspace": "/home/node/.openclaw/workspace",
+      "model": { "primary": "9router/oc/deepseek-v4-flash-free" },
+      "models": { "9router/oc/deepseek-v4-flash-free": {} }
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": ["https://18789-$WEB_HOST"]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+    },
+    "trustedProxies": [
+      "127.0.0.1", "::1", "172.17.0.1", "172.17.0.0/16"
+    ],
+    "tailscale": { "mode": "off", "resetOnExit": false }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "9router": {
+        "baseUrl": "http://$NINE_IP:20128/api",
+        "api": "openai-completions",
+        "apiKey": "sk-9router",
+        "models": [{
+          "id": "oc/deepseek-v4-flash-free",
+          "name": "DeepSeek V4 Flash (Free)",
+          "contextWindow": 128000,
+          "maxTokens": 4096,
+          "input": ["text"],
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+          "reasoning": true
+        }]
+      }
+    }
+  }
+}
+OCEOF
+      # 驗證 JSON 格式
+      python3 -c "import json; json.load(open('/tmp/openclaw-config/openclaw.json'))" 2>/dev/null \
+        || echo "[LOBSTER] WARN: OpenClaw config JSON validation failed"
+
+      # 5e. 自建 OpenClaw 映像（修復陷阱 #1:Unsafe temp #2:EACCES #3:Missing config #4:TTY）
+      echo "[LOBSTER] Building custom OpenClaw image (fixes UID/permission issues)..."
+      docker pull ghcr.io/openclaw/openclaw:latest > /tmp/openclaw-pull.log 2>&1
+
+      cat > /tmp/Dockerfile.openclaw <<'DEOF'
+FROM ghcr.io/openclaw/openclaw:latest
+USER root
+RUN chown -R 1000:1000 /home/node/.openclaw /home/node/.config 2>/dev/null; \
+    rm -rf /home/node/.openclaw 2>/dev/null; true
+COPY .openclaw /home/node/.openclaw
+RUN chown -R 1000:1000 /home/node/.openclaw
+USER node
+ENV OPENCLAW_TEMP_DIR=/tmp/openclaw
+DEOF
+
+      rm -rf /tmp/.openclaw && cp -r /tmp/openclaw-config /tmp/.openclaw
+      docker build -t openclaw:local -f /tmp/Dockerfile.openclaw /tmp/. > /tmp/openclaw-build.log 2>&1
+
+      # 5f. 啟動 OpenClaw（修復陷阱 #4:entrypoint #5:雙埠映射）
       if docker ps -a --format '{{.Names}}' | grep -qx 'openclaw'; then
-        docker start openclaw > /dev/null 2>&1
-      else
-        docker run -d \
-          --name openclaw \
-          --restart=unless-stopped \
-          -p 3000:3000 \
-          -v "$OC_DATA_DIR:/home/openclaw/.openclaw" \
-          -e OPENCLAW_LLM_BASE_URL="http://host.docker.internal:20128/api" \
-          -e OPENCLAW_LLM_API_KEY="sk-$JWT_SECRET" \
-          ghcr.io/openclaw/openclaw:latest > /dev/null 2>&1
+        docker rm -f openclaw > /dev/null 2>&1
       fi
 
-      echo "[LOBSTER] OpenClaw container scheduled (port 3000)"
+      docker run -d \
+        --name openclaw \
+        --restart=unless-stopped \
+        -p 3000:3000 \
+        -p 18789:18789 \
+        -e OPENCLAW_TEMP_DIR="/tmp/openclaw" \
+        openclaw:local sh -c "openclaw gateway run --force" > /dev/null 2>&1
 
+      echo "[LOBSTER] OpenClaw container launched (Gateway:3000 + Dashboard:18789)"
+
+      # ════════════════════════════════════════════════════════════
       # 6. Clone and install ClawTeam-OpenClaw (upstream: win4r)
+      # ════════════════════════════════════════════════════════════
       if [ ! -d "/home/user/ClawTeam-OpenClaw" ]; then
         echo "[LOBSTER] Cloning ClawTeam-OpenClaw from upstream (win4r)..."
         git clone --depth 1 --branch main https://github.com/win4r/ClawTeam-OpenClaw.git /home/user/ClawTeam-OpenClaw
@@ -214,10 +309,14 @@ CONFEOF
       if [ -d "/home/user/ClawTeam-OpenClaw" ]; then
         echo "[LOBSTER] Installing ClawTeam agent..."
         cd /home/user/ClawTeam-OpenClaw
-        pip3 install --user -e . > /tmp/clawteam-install.log 2>&1
+        pip3 install --user --break-system-packages -e . > /tmp/clawteam-install.log 2>&1
         
         if ! grep -q 'local/bin' /home/user/.bashrc 2>/dev/null; then
           echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/user/.bashrc
+        fi
+        # 修復陷阱 #8：NixOS Python 不走 default user site-packages
+        if ! grep -q 'PYTHONPATH.*site-packages' /home/user/.bashrc 2>/dev/null; then
+          echo 'export PYTHONPATH="$HOME/.local/lib/python3.13/site-packages:$PYTHONPATH"' >> /home/user/.bashrc
         fi
       fi
 BSEOF

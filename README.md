@@ -75,8 +75,8 @@ MIT — 自由使用、修改、分享。詳見 [LICENSE](./LICENSE)。
 ---
 
 **Status:** ✅ Production Ready
-**Version:** v4.3 (Security Hardened Edition)
-**Last Updated:** 2026-06-18
+**Version:** v4.4 (Lobster Battle-Tested Edition)
+**Last Updated:** 2026-06-22
 
 *「零成本不是夢想，是你的第二臺雲端電腦。」*
 
