@@ -244,7 +244,7 @@ CONFEOF
     "mode": "merge",
     "providers": {
       "9router": {
-        "baseUrl": "http://$NINE_IP:20128/api",
+        "baseUrl": "http://$NINE_IP:20128/api/v1",
         "api": "openai-completions",
         "apiKey": "sk-9router",
         "models": [{

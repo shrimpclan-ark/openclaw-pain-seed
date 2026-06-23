@@ -213,13 +213,13 @@ docker exec 9router sh -c 'node -e "
 "'
 ```
 
-### 🔥 陷阱 6：OpenClaw baseUrl 缺少 `/api`
-**根因：** OpenClaw 的 `openai-completions` 模式組合出路徑 `baseUrl/v1/chat/completions`。
+### 🔥 陷阱 6：OpenClaw baseUrl 缺少 `/v1` 或路徑錯誤
+**根因：** OpenClaw 的 `openai-completions` 模式會自動組合路徑 `baseUrl/chat/completions`，但 9router 的端點是 `/api/v1/chat/completions`。如果 baseUrl 只寫 `/api`，會打到錯誤的 401 端點。
 ```bash
 # ❌ 錯誤
-"baseUrl": "http://172.17.0.3:20128"
+"baseUrl": "http://172.17.0.3:20128" 或 "http://172.17.0.3:20128/api"
 # ✅ 正確
-"baseUrl": "http://172.17.0.3:20128/api"
+"baseUrl": "http://172.17.0.3:20128/api/v1"
 ```
 
 ### 🔥 陷阱 7：Firebase Studio 反向代理 — `Unable to forward request`
