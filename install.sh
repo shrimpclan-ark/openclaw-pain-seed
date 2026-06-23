@@ -66,9 +66,12 @@ docker ps -a --format '{{.Names}}' | grep -qx '9router' && {
  warn "已移除舊容器"
 }
 
+docker network create pain-net 2>/dev/null || true
+
 docker run -d \
  --name 9router \
  --restart=unless-stopped \
+ --network pain-net \
  -p 20128:20128 \
  -v "$HOME/.9router:/app/data" \
  -e DATA_DIR=/app/data \
@@ -77,7 +80,6 @@ docker run -d \
  -e HOSTNAME=0.0.0.0 \
  -e REQUIRE_API_KEY=true \
  decolua/9router:0.4.71 > /dev/null
-
 sleep 2
 docker ps --filter name=9router --format '{{.Status}}' | grep -q . || {
  docker logs 9router 2>&1 | tail -5

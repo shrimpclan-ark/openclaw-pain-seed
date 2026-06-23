@@ -204,9 +204,9 @@ CONFEOF
         console.log(\"OK\");
       "' > /tmp/apikey-register.log 2>&1 || echo "[LOBSTER] WARN: API key registration failed (can retry later)"
 
-      # 5b. 取得 9router 容器 IP（修復：不使用 host.docker.internal，rootless Docker 不支援）
-      NINE_IP=$(docker inspect 9router --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || echo "172.17.0.2")
-      echo "[LOBSTER] 9router container IP = $NINE_IP"
+      # 5b. 確保自訂 Docker 網路存在（修復陷阱 #9：不再依賴浮動 IP）
+      docker network create pain-net 2>/dev/null || true
+      docker network connect pain-net 9router 2>/dev/null || true
 
       # 5c. 偵測 Firebase Studio 外部網域
       WEB_HOST=$(echo "$WEB_HOST" | head -1)
@@ -244,7 +244,7 @@ CONFEOF
     "mode": "merge",
     "providers": {
       "9router": {
-        "baseUrl": "http://$NINE_IP:20128/api/v1",
+        "baseUrl": "http://9router:20128/api/v1",
         "api": "openai-completions",
         "apiKey": "sk-9router",
         "models": [{
@@ -291,8 +291,10 @@ DEOF
       docker run -d \
         --name openclaw \
         --restart=unless-stopped \
+        --network pain-net \
         -p 3000:3000 \
         -p 18789:18789 \
+        -v openclaw-data:/home/node/.openclaw \
         -e OPENCLAW_TEMP_DIR="/tmp/openclaw" \
         openclaw:local sh -c "openclaw gateway run --force" > /dev/null 2>&1
 
