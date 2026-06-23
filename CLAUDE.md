@@ -185,66 +185,49 @@ docker rm -f 9router
 # 然後重新執行 install.sh 或 lobster-skillet.sh
 ```
 
-### 🔥 陷阱 3：OpenClaw 容器 crash 迴圈 — `Unsafe fallback temp dir`
-**根因：** 容器內 `/home/node/.openclaw` 是 root 所有，但 OpenClaw 以 node（UID 1000）執行。
-**解法：** 不能直接 run 官方映像，必須自建映像（v4.4 已自動處理）
-```bash
-# 不能這樣（會 crash）：
-docker run ghcr.io/openclaw/openclaw:latest  # ❌
+### 🔥 IDX 部署十難 (The 10 Traps)
 
-# 必須這樣：
-docker run openclaw:local  # ✅ （預先 chown + COPY 設定的映像）
-```
+在將 OpenClaw 部署至 Rootless Docker 與 Firebase Studio 的過程中，我們曾經歷了十個致命陷阱。現在於 **v4.5.0** 這些陷阱皆已被永久封印。以下作為歷史除錯紀錄與維護參考：
 
-### 🔥 陷阱 4：OpenClaw 容器 UID 映射 — `EACCES: permission denied`
-**根因：** Rootless Docker 有使用者命名空間重新映射，主機 user 的檔案容器內寫不了。
-**解法：** 捨棄 volume 掛載，把設定 COPY 進映像內（v4.4 已自動處理）
+1. **Trap 1: 官方映像 UID 問題 (`EACCES: permission denied`)**
+   - **根因：** Rootless Docker 的 volume 掛載會導致容器內的 node (UID 1000) 無法寫入。
+   - **解法 (v4.4)：** 捨棄外部檔案掛載，動態 `docker build` 一個自建的 `openclaw:local` 映像，把設定檔與權限全部在映像內處理完畢。
 
-### 🔥 陷阱 5：9router 從容器連線需要 API key — `401 Unauthorized`
-**根因：** 9router 有 `REQUIRE_API_KEY=true`，從容器 IP 訪問必須帶註冊過的 key。
-**解法：** 註冊 `sk-9router` key 到 DB（v4.4 已自動處理）
-```bash
-# 手動註冊（如果自動註冊失敗）
-docker exec 9router sh -c 'node -e "
-  const db = require(\"better-sqlite3\")(\"/app/data/db/data.sqlite\");
-  db.prepare(\"INSERT OR REPLACE INTO apiKeys (id, key, name, machineId, isActive, createdAt) VALUES (?, ?, ?, ?, ?, ?)\")
-    .run(1, \"sk-9router\", \"openclaw\", \"\", 1, new Date().toISOString());
-  console.log(\"OK\");
-"'
-```
+2. **Trap 2: 容器 Crash 迴圈 (`Unsafe fallback temp dir`)**
+   - **根因：** `/home/node/.openclaw` 因權限問題無法寫入，導致系統崩潰。
+   - **解法 (v4.4)：** 在自建映像中 `chown -R 1000:1000` 並指定 `ENV OPENCLAW_TEMP_DIR=/tmp/openclaw`。
 
-### 🔥 陷阱 6：OpenClaw baseUrl 缺少 `/v1` 或路徑錯誤
-**根因：** OpenClaw 的 `openai-completions` 模式會自動組合路徑 `baseUrl/chat/completions`，但 9router 的端點是 `/api/v1/chat/completions`。如果 baseUrl 只寫 `/api`，會打到錯誤的 401 端點。
-```bash
-# ❌ 錯誤
-"baseUrl": "http://172.17.0.3:20128" 或 "http://172.17.0.3:20128/api"
-# ✅ 正確
-"baseUrl": "http://172.17.0.3:20128/api/v1"
-```
+3. **Trap 3: API Key 未註冊 (`401 Unauthorized`)**
+   - **根因：** 從 OpenClaw 連接 `9router` 必須帶有資料庫中有效的金鑰。
+   - **解法 (v4.4)：** 於 `dev.nix` 啟動時自動執行 SQLite 寫入指令預先註冊 `sk-9router`。
 
-### 🔥 陷阱 7：Firebase Studio 反向代理 — `Unable to forward request`
-**根因：** Firebase Studio 的 proxy 需要 HTTP 握手成功，且 Dashboard 需要 `bind: lan` + `allowedOrigins`。
-**解法：** 雙埠映射（3000 + 18789）+ config 中設 `bind: lan` + `allowedOrigins`（v4.4 已自動處理）
+4. **Trap 4: Dashboard 來源不允許 (`Unable to forward request`)**
+   - **根因：** Firebase Studio 的反向代理機制會驗證 origin。
+   - **解法 (v4.4)：** 設定 `allowedOrigins: ["*"]` 以及 `bind: lan`。
 
-### 🔥 陷阱 8：ClawTeam CLI — `ModuleNotFoundError: No module named 'clawteam'`
-**根因：** NixOS 的 Python 不走標準的 `--user` site-packages 路徑。
-**解法：** 手動指定 PYTHONPATH（v4.4 已自動處理）
-```bash
-export PYTHONPATH="$HOME/.local/lib/python3.13/site-packages:$PYTHONPATH"
-```
+5. **Trap 5: 雙埠映射問題**
+   - **根因：** 忘記暴露 Gateway Port 導致控制台能開但後端 API 不通。
+   - **解法 (v4.4)：** `docker run` 同時開放 `-p 3000:3000 -p 18789:18789`。
 
-### 🔥 陷阱 9：Docker build cache 導致設定沒更新
-**根因：** 改變 config 後重建，因 cache layer 沒過期，映像內容還是舊的。
-**解法：** 重建前先確認 config 內容正確：
-```bash
-python3 -c "import json; cfg=json.load(open('/tmp/openclaw-config/openclaw.json')); print(cfg['models']['providers']['9router']['baseUrl'])"
-rm -rf /tmp/.openclaw && cp -r /tmp/openclaw-config /tmp/.openclaw
-docker build --no-cache -t openclaw:local -f /tmp/Dockerfile.openclaw /tmp/.
-```
+6. **Trap 6: 對話資料遺失 (IDX 重啟失憶)**
+   - **根因：** 為了解決 Trap 1 移除了外部掛載，導致 IDX 每次喚醒 VM `docker rm` 後，資料隨之灰飛煙滅。
+   - **解法 (v4.5)：** 引入 Docker 內部管理的 Named Volume (`-v openclaw-data:/home/node/.openclaw`)。如此既無權限問題，又能讓對話與狀態實現「永生」。
 
-### 🔥 陷阱 10：每次重啟需重新裝置配對
-每次容器重建後，瀏覽器的控制台 token 會失效，需重新核准。
-**解法：** 瀏覽器按 F5 → 跳出 device ID → `docker exec openclaw openclaw devices approve <ID>`
+7. **Trap 7: ClawTeam CLI (`ModuleNotFoundError`)**
+   - **根因：** NixOS 預設不讀取 user site-packages 路徑。
+   - **解法 (v4.4)：** 自動注入 `export PYTHONPATH="$HOME/.local/lib/python3.13/site-packages:$PYTHONPATH"`。
+
+8. **Trap 8: 裝置配對不持久**
+   - **根因：** 每次容器重建，Dashboard 配對的 token 都會被洗掉，導致每次重啟都要重新 `approve` 裝置。
+   - **解法 (v4.5)：** 由於 Trap 6 使用了 Named Volume，授權狀態得以保留，現在只需初次配對一次即可。
+
+9. **Trap 9: 9router IP 浮動 (`Connection Refused`)**
+   - **根因：** 原本使用 `docker inspect` 抓取 172.x.x.x，但重啟後 9router IP 可能改變，而 OpenClaw 若讀取到舊的 Volume 記錄就會連線失敗。
+   - **解法 (v4.5)：** 建立自訂 Docker 網路 `docker network create pain-net`，並讓兩個容器互相加入。從此只需將 baseUrl 寫死為 `http://9router:20128`，完美靠 DNS 解析。
+
+10. **Trap 10: 無聲的 401 授權失敗 (`baseUrl` 缺少 `/v1`)**
+    - **根因：** OpenClaw 的 `openai-completions` 模式發送請求時只會自動附加 `/chat/completions`。若 `baseUrl` 寫成 `.../api`，會打到 9router 根本不存在的 `.../api/chat/completions` 導致直接退回 401，且不留任何日誌。
+    - **解法 (v4.4.1)：** 將 `baseUrl` 精準設定為 `http://9router:20128/api/v1`，湊出正確的端點。
 
 ---
 
