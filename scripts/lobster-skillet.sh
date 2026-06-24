@@ -235,7 +235,7 @@ phase_full() {
     "mode": "merge",
     "providers": {
       "9router": {
-        "baseUrl": "http://${NINE_IP}:20128/api",
+        "baseUrl": "http://${NINE_IP}:20128/api/v1",
         "api": "openai-completions",
         "apiKey": "sk-9router",
         "models": [{
@@ -387,9 +387,9 @@ fix_9router_ip() {
   info "9router 新 IP = ${NINE_IP}"
   if docker ps --filter name=openclaw --format '{{.Names}}' | grep -q openclaw; then
     docker exec openclaw sh -c "cat /home/node/.openclaw/openclaw.json" | \
-      python3 -c "import sys,json; d=json.load(sys.stdin); d['models']['providers']['9router']['baseUrl']='http://${NINE_IP}:20128/api'; print(json.dumps(d,indent=2))" | \
+      python3 -c "import sys,json; d=json.load(sys.stdin); d['models']['providers']['9router']['baseUrl']='http://${NINE_IP}:20128/api/v1'; print(json.dumps(d,indent=2))" | \
       docker exec -i openclaw sh -c "cat > /home/node/.openclaw/openclaw.json"
-    ok "baseUrl 已更新為 http://${NINE_IP}:20128/api"
+    ok "baseUrl 已更新為 http://${NINE_IP}:20128/api/v1"
     warn "請重啟 OpenClaw 容器套用變更"
   else
     fail "OpenClaw 未執行，無法更新"

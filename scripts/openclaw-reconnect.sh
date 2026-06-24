@@ -44,10 +44,10 @@ CURRENT_URL=$(docker exec openclaw sh -c 'cat /home/node/.openclaw/openclaw.json
   | grep -oP '"baseUrl"\s*:\s*"\K[^"]+' || echo "")
 if echo "$CURRENT_URL" | grep -qP '\d+\.\d+\.\d+\.\d+\d+\.\d+\.\d+\.\d+'; then
     echo "⚠️  偵測到損毀的 baseUrl: $CURRENT_URL"
-    echo "   修復為: http://$R9_IP:20128/api"
+    echo "   修復為: http://$R9_IP:20128/api/v1"
     docker exec openclaw sh -c "
         cd /home/node/.openclaw
-        sed -i 's|\"baseUrl\": \"[^\"]*\"|\"baseUrl\": \"http://$R9_IP:20128/api\"|' openclaw.json
+        sed -i 's|\"baseUrl\": \"[^\"]*\"|\"baseUrl\": \"http://$R9_IP:20128/api/v1\"|' openclaw.json
         chown node:node openclaw.json
     "
     echo "   重啟 openclaw 以套用修復..."
