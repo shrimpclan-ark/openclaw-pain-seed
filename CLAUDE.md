@@ -229,6 +229,14 @@ docker rm -f 9router
     - **根因：** OpenClaw 的 `openai-completions` 模式發送請求時只會自動附加 `/chat/completions`。若 `baseUrl` 寫成 `.../api`，會打到 9router 根本不存在的 `.../api/chat/completions` 導致直接退回 401，且不留任何日誌。
     - **解法 (v4.4.1)：** 將 `baseUrl` 精準設定為 `http://9router:20128/api/v1`，湊出正確的端點。
 
+11. **Trap 11: 容器重啟後自訂網路斷開 (`Network Connection Error`)**
+    - **根因：** 若僅用 `docker network connect` 指令將運行中的容器加入網路，當容器重啟 (restart) 時該連接就會遺失。
+    - **解法 (v4.5.0)：** 將網路綁定改為原生啟動參數 `docker run --network pain-net`，確保容器每次重啟都自動在該網路內。若使用舊版，可執行 `scripts/openclaw-reconnect.sh` 自動修復連線。
+
+12. **Trap 12: 瀏覽器 Token 快取與重新配對**
+    - **根因：** 雖然 Volume 保存了 `gateway.auth.token`，但 IDX 每次重啟可能會分配不同的外部預覽 URL，導致瀏覽器端 WebSocket 憑證失效需要重連。
+    - **解法 (v4.5.0)：** `openclaw-reconnect.sh` 腳本會從容器內抽取出永久 Token，並產生帶有 `#token=xxx` 的捷徑 URL，點擊即可無縫登入。
+
 ---
 
 ## 五、重要路徑速查
