@@ -1,0 +1,37 @@
+{
+  "name": "PAIN-000 DevContainer (v4.5)",
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "enableNonRootDocker": "true",
+      "moby": "true"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "nodeGypDependencies": true
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "forwardPorts": [3000, 18789, 20128],
+  "portsAttributes": {
+    "3000": { "label": "OpenClaw Gateway", "onAutoForward": "notify" },
+    "18789": { "label": "OpenClaw Dashboard", "onAutoForward": "notify" },
+    "20128": { "label": "9router API", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "bash install.sh && bash scripts/refurbish-devcontainer.sh",
+  "remoteUser": "vscode"
+}
