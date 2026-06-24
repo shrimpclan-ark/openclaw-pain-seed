@@ -211,8 +211,8 @@ phase_full() {
   "agents": {
     "defaults": {
       "workspace": "/home/node/.openclaw/workspace",
-      "model": { "primary": "9router/oc/deepseek-v4-flash-free" },
-      "models": { "9router/oc/deepseek-v4-flash-free": {} }
+      "model": { "primary": "9router/oc/nemotron-3-ultra-free" },
+      "models": { "9router/oc/nemotron-3-ultra-free": {} }
     }
   },
   "gateway": {
@@ -239,10 +239,10 @@ phase_full() {
         "api": "openai-completions",
         "apiKey": "sk-9router",
         "models": [{
-          "id": "oc/deepseek-v4-flash-free",
-          "name": "DeepSeek V4 Flash (Free)",
+          "id": "oc/nemotron-3-ultra-free",
+          "name": "Nemotron 3 Ultra (Free)",
           "contextWindow": 128000,
-          "maxTokens": 4096,
+          "maxTokens": 8192,
           "input": ["text"],
           "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
           "reasoning": true
@@ -307,7 +307,7 @@ DOCKERFILE
   docker exec openclaw sh -c "curl -s http://${NINE_IP}:20128/api/v1/chat/completions \
     -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer sk-9router' \
-    -d '{\"model\":\"oc/deepseek-v4-flash-free\",\"messages\":[{\"role\":\"user\",\"content\":\"Say 蝦\"}],\"max_tokens\":100}'" 2>&1 | grep -o '"content":"[^"]*"'
+    -d '{\"model\":\"oc/nemotron-3-ultra-free\",\"messages\":[{\"role\":\"user\",\"content\":\"Say 蝦\"}],\"max_tokens\":100}'" 2>&1 | grep -o '"content":"[^"]*"'
 
   # ── 完成 ──────────────────────────────────────────────
   sep

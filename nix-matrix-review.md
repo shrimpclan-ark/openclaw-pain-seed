@@ -83,7 +83,7 @@ node matrix-creator.js cookies_acc1.json "<repo_url>" 10
 ### 5. 🔐 9router 使用非官方/免費模型端點
 
 Claude Code 被設定為通過 9router 容器路由請求，該容器代理到以下端點：
-- `oc/deepseek-v4-flash-free`
+- `oc/nemotron-3-ultra-free`
 - `oc/mimo-v2.5-free`
 
 這彙整了免費 AI 模型端點——「零成本」模型依賴於存取這些非官方的免費後端，而非合法的付費 API 存取。

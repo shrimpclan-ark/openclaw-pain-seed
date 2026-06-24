@@ -72,7 +72,7 @@ NINE_IP=$(docker inspect 9router --format '{{range .NetworkSettings.Networks}}{{
 docker exec openclaw sh -c "curl -s http://${NINE_IP}:20128/api/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer sk-9router' \
-  -d '{\"model\":\"oc/deepseek-v4-flash-free\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":50}'" | head -1
+  -d '{\"model\":\"oc/nemotron-3-ultra-free\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":50}'" | head -1
 
 # 6. 容器日誌（排查 crash）
 docker logs 9router --tail 20
@@ -285,7 +285,7 @@ curl -s http://127.0.0.1:20128/api/v1/models | jq -r '.data[].id' | grep -E "fre
 curl -s http://127.0.0.1:20128/api/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk-9router" \
-  -d '{"model":"oc/deepseek-v4-flash-free","messages":[{"role":"user","content":"hi"}],"max_tokens":100}'
+  -d '{"model":"oc/nemotron-3-ultra-free","messages":[{"role":"user","content":"hi"}],"max_tokens":100}'
 
 # 查看裝置配對
 docker exec openclaw openclaw devices list

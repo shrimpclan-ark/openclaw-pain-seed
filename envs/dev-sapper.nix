@@ -162,7 +162,7 @@ EOFC
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:20128/api",
     "ANTHROPIC_AUTH_TOKEN": "sk-9router",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/deepseek-v4-flash-free",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/nemotron-3-ultra-free",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "oc/mimo-v2.5-free",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "oc/mimo-v2.5-free",
     "DISABLE_AUTOUPDATER": "1"

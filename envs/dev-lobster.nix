@@ -164,7 +164,7 @@ EOFC
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:20128/api",
     "ANTHROPIC_AUTH_TOKEN": "sk-9router",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/deepseek-v4-flash-free",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "oc/nemotron-3-ultra-free",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "oc/mimo-v2.5-free",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "oc/mimo-v2.5-free",
     "DISABLE_AUTOUPDATER": "1"
@@ -220,8 +220,8 @@ CONFEOF
   "agents": {
     "defaults": {
       "workspace": "/home/node/.openclaw/workspace",
-      "model": { "primary": "9router/oc/deepseek-v4-flash-free" },
-      "models": { "9router/oc/deepseek-v4-flash-free": {} }
+      "model": { "primary": "9router/oc/nemotron-3-ultra-free" },
+      "models": { "9router/oc/nemotron-3-ultra-free": {} }
     }
   },
   "gateway": {
@@ -248,10 +248,10 @@ CONFEOF
         "api": "openai-completions",
         "apiKey": "sk-9router",
         "models": [{
-          "id": "oc/deepseek-v4-flash-free",
-          "name": "DeepSeek V4 Flash (Free)",
+          "id": "oc/nemotron-3-ultra-free",
+          "name": "Nemotron 3 Ultra (Free)",
           "contextWindow": 128000,
-          "maxTokens": 4096,
+          "maxTokens": 8192,
           "input": ["text"],
           "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
           "reasoning": true

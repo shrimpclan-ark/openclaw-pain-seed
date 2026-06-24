@@ -251,7 +251,7 @@ Claude Code 會自動完成所有安裝步驟。
 
 | 後端 | 前綴 | 模型範例 | 費用 |
 |------|------|----------|------|
-| OpenCode Free | `oc/` | `deepseek-v4-flash-free` | 免費 |
+| OpenCode Free | `oc/` | `nemotron-3-ultra-free` | 免費 |
 | Qoder | `qd/` | `gm51model` | 免費 |
 | OpenAI | `gpt/` | `gpt-4o` | API 付費 |
 | Anthropic | `claude/` | `claude-sonnet-4-6` | API 付費 |

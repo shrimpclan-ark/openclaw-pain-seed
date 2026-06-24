@@ -17,8 +17,8 @@ cat > /tmp/openclaw-config/openclaw.json <<OCEOF
   "agents": {
     "defaults": {
       "workspace": "/home/node/.openclaw/workspace",
-      "model": { "primary": "9router/oc/deepseek-v4-flash-free" },
-      "models": { "9router/oc/deepseek-v4-flash-free": {} }
+      "model": { "primary": "9router/oc/nemotron-3-ultra-free" },
+      "models": { "9router/oc/nemotron-3-ultra-free": {} }
     }
   },
   "gateway": {
@@ -38,10 +38,10 @@ cat > /tmp/openclaw-config/openclaw.json <<OCEOF
         "api": "openai-completions",
         "apiKey": "sk-9router",
         "models": [{
-          "id": "oc/deepseek-v4-flash-free",
-          "name": "DeepSeek V4 Flash (Free)",
+          "id": "oc/nemotron-3-ultra-free",
+          "name": "Nemotron 3 Ultra (Free)",
           "contextWindow": 128000,
-          "maxTokens": 4096,
+          "maxTokens": 8192,
           "input": ["text"],
           "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
           "reasoning": true
