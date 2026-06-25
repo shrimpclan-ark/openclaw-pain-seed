@@ -18,7 +18,13 @@ if ! docker ps | grep -q '9router'; then
     docker start 9router >/dev/null || echo "無法啟動 9router"
 fi
 
-# 2. 檢查 openclaw
+# 2. 預修復 Volume 權限（Trap 13: /npm/projects EACCES crash loop）
+docker run --rm -v openclaw-data:/data alpine sh -c '
+  mkdir -p /data/npm/projects /data/workspace /data/logs
+  chown -R 1000:1000 /data
+' 2>/dev/null || true
+
+# 3. 檢查 openclaw
 if ! docker ps | grep -q 'openclaw'; then
     echo "啟動 openclaw..."
     docker start openclaw >/dev/null || echo "無法啟動 openclaw"

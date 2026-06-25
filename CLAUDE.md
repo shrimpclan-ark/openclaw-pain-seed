@@ -237,6 +237,20 @@ docker rm -f 9router
     - **根因：** 雖然 Volume 保存了 `gateway.auth.token`，但 IDX 每次重啟可能會分配不同的外部預覽 URL，導致瀏覽器端 WebSocket 憑證失效需要重連。
     - **解法 (v4.5.0)：** `openclaw-reconnect.sh` 腳本會從容器內抽取出永久 Token，並產生帶有 `#token=xxx` 的捷徑 URL，點擊即可無縫登入。
 
+13. **Trap 13: Named Volume 權限地獄 (`EACCES: /npm/projects`)**
+    - **根因：** 使用 Named Volume 持久化後，Volume 內的 `/npm/projects` 等子目錄可能不存在或擁有者為 root (UID 0)。當 OpenClaw 以 node (UID 1000) 啟動時，嘗試掃描該目錄會拋出 `EACCES: permission denied`，導致容器進入無限 Restart 循環。
+    - **解法 (v4.5.1)：** 在每次 `docker run openclaw` 之前，先用 alpine 容器預修復 Volume 權限：
+    ```bash
+    docker run --rm -v openclaw-data:/data alpine sh -c '
+      mkdir -p /data/npm/projects /data/workspace /data/logs
+      chown -R 1000:1000 /data
+    '
+    ```
+
+14. **Trap 14: `docker inspect` 多網路 IP 串接損毀**
+    - **根因：** 當容器同時連接多個 Docker 網路（如 bridge + pain-net）時，使用 `{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}` 會將所有 IP 無分隔地串接在一起（例如 `172.17.0.2172.18.0.3`），導致 baseUrl 損毀。
+    - **解法 (v4.5.1)：** 改用指定網路查詢 `{{index .NetworkSettings.Networks "pain-net" | .IPAddress}}`，或直接使用 Docker DNS 名稱 `http://9router:20128/api/v1` 徹底避免此問題。
+
 ---
 
 ## 五、重要路徑速查

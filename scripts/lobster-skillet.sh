@@ -276,12 +276,19 @@ DOCKERFILE
 
   # ── 5. 啟動 OpenClaw ────────────────────────────────
   sep
-  info "📌 步驟 4/5：啟動 OpenClaw 容器（雙埠映射）"
+  info "📌 步驟 4/5：啟動 OpenClaw 容器（雙埠映射、掛載 Volume）"
   docker rm -f openclaw 2>/dev/null || true
+  # 預修復 Volume 權限（Trap 13: /npm/projects EACCES）
+  docker run --rm -v openclaw-data:/data alpine sh -c '
+    mkdir -p /data/npm/projects /data/workspace /data/logs
+    chown -R 1000:1000 /data
+  ' 2>/dev/null || true
   docker run -d --name openclaw --restart=unless-stopped \
+    --network pain-net \
     -p 3000:3000 -p 18789:18789 \
+    -v openclaw-data:/home/node/.openclaw \
     -e OPENCLAW_TEMP_DIR="/tmp/openclaw" \
-    openclaw:local sh -c "openclaw gateway run --force" > /dev/null
+    openclaw:local sh -c "openclaw gateway run" > /dev/null
 
   sleep 12
   STATUS=$(docker ps --filter name=openclaw --format "{{.Status}}" 2>/dev/null || echo "失敗")
@@ -350,14 +357,21 @@ fix_api_key() {
 
 fix_crash() {
   sep
-  info "🩺 修復：重建 OpenClaw 容器"
+  info "🩺 修復：重建 OpenClaw 容器（掛載 Volume）"
   export DOCKER_HOST="${DOCKER_HOST:-unix:///tmp/run-1000/docker.sock}"
   docker rm -f openclaw 2>/dev/null || true
   docker build -t openclaw:local -f /tmp/Dockerfile.openclaw /tmp/. 2>&1 | tail -3
+  # 預修復 Volume 權限（Trap 13: /npm/projects EACCES）
+  docker run --rm -v openclaw-data:/data alpine sh -c '
+    mkdir -p /data/npm/projects /data/workspace /data/logs
+    chown -R 1000:1000 /data
+  ' 2>/dev/null || true
   docker run -d --name openclaw --restart=unless-stopped \
+    --network pain-net \
     -p 3000:3000 -p 18789:18789 \
+    -v openclaw-data:/home/node/.openclaw \
     -e OPENCLAW_TEMP_DIR="/tmp/openclaw" \
-    openclaw:local sh -c "openclaw gateway run --force" > /dev/null
+    openclaw:local sh -c "openclaw gateway run" > /dev/null
   sleep 10
   docker ps --filter name=openclaw --format "✅ OpenClaw: {{.Status}}"
 }
@@ -381,15 +395,13 @@ EOF
 
 fix_9router_ip() {
   sep
-  info "🌐 修復：更新 9router IP"
+  info "🌐 修復：更新 9router baseUrl 為 Docker DNS"
   export DOCKER_HOST="${DOCKER_HOST:-unix:///tmp/run-1000/docker.sock}"
-  NINE_IP=$(docker inspect 9router --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-  info "9router 新 IP = ${NINE_IP}"
   if docker ps --filter name=openclaw --format '{{.Names}}' | grep -q openclaw; then
     docker exec openclaw sh -c "cat /home/node/.openclaw/openclaw.json" | \
-      python3 -c "import sys,json; d=json.load(sys.stdin); d['models']['providers']['9router']['baseUrl']='http://${NINE_IP}:20128/api/v1'; print(json.dumps(d,indent=2))" | \
+      python3 -c "import sys,json; d=json.load(sys.stdin); d['models']['providers']['9router']['baseUrl']='http://9router:20128/api/v1'; print(json.dumps(d,indent=2))" | \
       docker exec -i openclaw sh -c "cat > /home/node/.openclaw/openclaw.json"
-    ok "baseUrl 已更新為 http://${NINE_IP}:20128/api/v1"
+    ok "baseUrl 已更新為 http://9router:20128/api/v1"
     warn "請重啟 OpenClaw 容器套用變更"
   else
     fail "OpenClaw 未執行，無法更新"
