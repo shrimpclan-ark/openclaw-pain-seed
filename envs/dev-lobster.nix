@@ -27,6 +27,16 @@
       #!/usr/bin/env bash
       set -x
 
+      # --- STEP 0: Registry 機制 — 自動復原蝦網身份 ---
+      # 外部使用者首次建立 Workspace 時，ENABLE_REMOTE_ACCESS 由 Template Checkbox 注入。
+      # 但 IDX 重啟/重建後 env 可能遺失。此處以 Tailscale state 作為「前世記憶」：
+      # 若偵測到之前已成功加入蝦網，則自動補回身份，避免失聯。
+      SHRIMP_REGISTRY="/home/user/.tailscale-state"
+      if [ "$ENABLE_REMOTE_ACCESS" != "true" ] && [ -d "$SHRIMP_REGISTRY" ] && [ "$(ls -A $SHRIMP_REGISTRY 2>/dev/null)" ]; then
+        echo "[REGISTRY] 偵測到前世蝦網記憶 ($SHRIMP_REGISTRY)，自動恢復遠端存取。"
+        export ENABLE_REMOTE_ACCESS="true"
+      fi
+
       # --- STEP A & B: Opt-in Remote Access (Tailscale + SSH) ---
       if [ "$ENABLE_REMOTE_ACCESS" = "true" ]; then
         STATE_DIR="/home/user/.tailscale-state"

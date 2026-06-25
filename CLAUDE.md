@@ -251,6 +251,10 @@ docker rm -f 9router
     - **根因：** 當容器同時連接多個 Docker 網路（如 bridge + pain-net）時，使用 `{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}` 會將所有 IP 無分隔地串接在一起（例如 `172.17.0.2172.18.0.3`），導致 baseUrl 損毀。
     - **解法 (v4.5.1)：** 改用指定網路查詢 `{{index .NetworkSettings.Networks "pain-net" | .IPAddress}}`，或直接使用 Docker DNS 名稱 `http://9router:20128/api/v1` 徹底避免此問題。
 
+15. **Trap 15: IDX 重啟後 Tailscale/SSHD 不啟動 (蝦網失聯)**
+    - **根因：** `ENABLE_REMOTE_ACCESS` 環境變數是在首次建立 Workspace 時由 IDX Template Checkbox 透過 `sed` 注入到 `dev.nix` 的 `env` 區塊。但 IDX 重建 VM 時若 `dev.nix` 被 Git 還原或覆蓋，該行會消失，導致 Tailscale 與 SSHD 的啟動區塊被跳過。
+    - **解法 (v4.5.2)：** 引入「前世記憶」Registry 機制——在啟動腳本的最開頭檢查 `/home/user/.tailscale-state` 目錄是否有內容。若有，代表此 Workspace 曾經成功加入蝦網，自動補回 `export ENABLE_REMOTE_ACCESS="true"`。此機制不影響外部使用者（首次建立時該目錄為空或不存在）。
+
 ---
 
 ## 五、重要路徑速查
